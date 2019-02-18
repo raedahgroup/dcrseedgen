@@ -4,49 +4,63 @@ import (
 	"log"
 
 	"github.com/aarzilli/nucular"
+	"github.com/raedahgroup/dcrseedgen/helper"
 )
 
 type App struct {
-	name          string
-	hasRendered   bool
-	currentPage   string
-	renderhandler *RenderHandler
+	currentPage  string
+	pageChanged  bool
+	masterWindow nucular.MasterWindow
+	pages        map[string]page
 }
 
 const (
-	scaling = 1.1
+	scaling  = 1.1
+	appName  = "DCR Seed Generator"
+	homePage = "seed"
 )
 
 func main() {
 	app := &App{
-		hasRendered:   false,
-		name:          "DCR Seed Generator",
-		currentPage:   "home",
-		renderhandler: &RenderHandler{},
+		pageChanged: true,
+		currentPage: homePage,
+	}
+
+	// register pages
+	pages := getPages()
+	app.pages = make(map[string]page, len(pages))
+	for _, page := range pages {
+		app.pages[page.name] = page
 	}
 
 	// load logo once
-	err := loadLogo()
+	err := helper.LoadLogo()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	window := nucular.NewMasterWindow(nucular.WindowContextualReplace|nucular.WindowNonmodal, app.name, app.render)
-	if err := setStyle(window); err != nil {
+	window := nucular.NewMasterWindow(0, appName, app.render)
+	if err := helper.InitStyle(window); err != nil {
 		log.Fatal(err)
 	}
+
+	app.masterWindow = window
 	window.Main()
 }
 
+func (app *App) changePage(page string) {
+	app.currentPage = page
+	app.pageChanged = true
+	app.masterWindow.Changed()
+}
+
 func (app *App) render(window *nucular.Window) {
-	if !app.hasRendered {
-		app.hasRendered = true
-		app.renderhandler.beforeRender(&app.currentPage)
+	currentPage := app.pages[app.currentPage]
+
+	if app.pageChanged {
+		currentPage.handler.BeforeRender()
+		app.pageChanged = false
 	}
 
-	if app.currentPage == "home" {
-		app.renderhandler.renderHome(window)
-	} else {
-		app.renderhandler.renderVerify(window)
-	}
+	currentPage.handler.Render(window)
 }
