@@ -40,7 +40,7 @@ func (w *Window) Style() {
 }
 
 func DrawPageHeader(window *nucular.Window) {
-	/**window.Row(70).Dynamic(1)
+	window.Row(70).Dynamic(1)
 
 	style := window.Master().Style()
 	style.GroupWindow.FixedBackground.Data.Color = whiteColor
@@ -60,5 +60,5 @@ func DrawPageHeader(window *nucular.Window) {
 	style = window.Master().Style()
 	style.GroupWindow.FixedBackground.Data.Color = colorTable.ColorWindow
 	style.GroupWindow.Padding = groupWindowPadding
-	window.Master().SetStyle(style)**/
+	window.Master().SetStyle(style)
 }

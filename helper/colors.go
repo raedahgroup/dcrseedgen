@@ -5,8 +5,8 @@ import nstyle "github.com/aarzilli/nucular/style"
 
 var (
 	whiteColor      = color.RGBA{255, 255, 255, 255}
-	colorDanger     = color.RGBA{215, 58, 73, 255}
-	colorSuccess    = color.RGBA{227, 98, 9, 255}
+	ColorDanger     = color.RGBA{215, 58, 73, 255}
+	ColorSuccess    = color.RGBA{227, 98, 9, 255}
 	colorPrimary    = color.RGBA{9, 20, 64, 255}
 	colorAccent     = color.RGBA{237, 109, 71, 255}
 	buttonTextColor = colorAccent

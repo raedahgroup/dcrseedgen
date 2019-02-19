@@ -3,7 +3,10 @@ package helper
 import (
 	"fmt"
 	"image"
+	"image/draw"
+	"image/png"
 	"io/ioutil"
+	"os"
 
 	"github.com/aarzilli/nucular"
 	nstyle "github.com/aarzilli/nucular/style"
@@ -19,13 +22,24 @@ var (
 	normalWindowPadding = image.Point{20, 0}
 	groupWindowPadding  = image.Point{10, 0}
 	noPadding           = image.Point{0, 0}
+
+	logo *image.RGBA
 )
 
 const (
-	scaling = 1.3
+	scaling = 1.1
 )
 
 func LoadLogo() error {
+	logoHandler, err := os.Open("assets/logo.png")
+	if err != nil {
+		return err
+	}
+	defer logoHandler.Close()
+
+	img, _ := png.Decode(logoHandler)
+	logo = image.NewRGBA(img.Bounds())
+	draw.Draw(logo, img.Bounds(), img, image.ZP, draw.Src)
 	return nil
 }
 

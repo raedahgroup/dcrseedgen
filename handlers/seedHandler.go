@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"image/color"
 	"strconv"
 	"strings"
 
@@ -127,6 +128,7 @@ func (h *SeedGeneratorHandler) renderSeedPage(window *nucular.Window) {
 		w.Label("", "LC")
 
 		if w.ButtonText("Verify") {
+			h.verifyMessage = &verifyMessage{}
 			h.isShowingVerifyPage = true
 			w.Master().Changed()
 		}
@@ -152,5 +154,85 @@ func newWordColumn(window *helper.Window, words []string, currentItem *int) {
 }
 
 func (h *SeedGeneratorHandler) renderVerifyPage(window *nucular.Window) {
+	// draw page header
+	helper.DrawPageHeader(window)
 
+	window.Row(330).Dynamic(1)
+	if w := helper.NewWindow("Verify content", window, 0); w != nil {
+		w.Row(20).Dynamic(1)
+		helper.UseFont(w, helper.FontBold)
+		w.Label("Verify:", "LC")
+
+		helper.UseFont(w, helper.FontNormal)
+		w.Row(235).Dynamic(1)
+		if colWindow := w.NewWindow("", 0); colWindow != nil {
+			colWindow.Row(220).Dynamic(noColumns)
+			currentItem := 0
+			for index := range h.columns {
+				newInputColumn(colWindow, h.columns[index].inputs, &currentItem)
+			}
+			colWindow.End()
+		}
+
+		if h.verifyMessage.message != "" {
+			var color color.RGBA
+
+			switch h.verifyMessage.messageType {
+			case "error":
+				color = helper.ColorDanger
+			case "success":
+				color = helper.ColorSuccess
+			}
+
+			w.Row(20).Dynamic(1)
+			w.LabelColored(h.verifyMessage.message, "LC", color)
+		}
+
+		w.Row(40).Ratio(0.5, 0.25, 0.25)
+		w.Label("", "LC")
+		if w.ButtonText("Verify") {
+			msg := &verifyMessage{}
+			if h.doVerify(w) {
+				msg.message = "Verification successfull !!"
+				msg.messageType = "success"
+			} else {
+				msg.message = "Invalid mnemonic"
+				msg.messageType = "error"
+			}
+			h.verifyMessage = msg
+		}
+
+		if w.ButtonText("Back") {
+			h.isShowingVerifyPage = false
+			w.Master().Changed()
+		}
+
+		w.End()
+	}
+}
+
+func (h *SeedGeneratorHandler) doVerify(window *helper.Window) bool {
+	for _ = range h.columns {
+		for columnIndex := range h.columns {
+			for itemIndex := range h.columns[columnIndex].words {
+				if h.columns[columnIndex].words[itemIndex] != string(h.columns[columnIndex].inputs[itemIndex].Buffer) {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+func newInputColumn(window *helper.Window, inputs []nucular.TextEditor, currentItem *int) {
+	if w := window.NewWindow(strconv.Itoa(*currentItem), 0); w != nil {
+		for index := range inputs {
+			w.Row(25).Ratio(0.25, 0.75)
+			w.Label(strconv.Itoa(*currentItem+1)+". ", "LC")
+			inputs[index].Edit(w.Window)
+
+			*currentItem++
+		}
+		w.End()
+	}
 }
