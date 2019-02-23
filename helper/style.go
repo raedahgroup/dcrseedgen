@@ -3,6 +3,7 @@ package helper
 import (
 	"fmt"
 	"image"
+	"image/color"
 	"image/draw"
 	"image/png"
 	"io/ioutil"
@@ -19,7 +20,7 @@ var (
 	FontBold   font.Face
 	FontNormal font.Face
 
-	normalWindowPadding = image.Point{20, 0}
+	normalWindowPadding = image.Point{10, 0}
 	groupWindowPadding  = image.Point{10, 0}
 	noPadding           = image.Point{0, 0}
 
@@ -27,7 +28,7 @@ var (
 )
 
 const (
-	scaling = 1.1
+	scaling = 1.35
 )
 
 func LoadLogo() error {
@@ -52,7 +53,7 @@ func InitStyle(window nucular.MasterWindow) error {
 	style.Font = FontNormal
 
 	// style normal window
-	style.NormalWindow.Padding = normalWindowPadding
+	style.NormalWindow.Padding = noPadding
 
 	// style buttons
 	style.Button.Rounding = 0
@@ -108,4 +109,27 @@ func UseFont(window *Window, font font.Face) {
 	style := window.Master().Style()
 	style.Font = font
 	window.Master().SetStyle(style)
+}
+
+func StyleNav(window nucular.MasterWindow) {
+	style := window.Style()
+	// nav window background color
+	style.GroupWindow.FixedBackground.Data.Color = whiteColor
+	style.GroupWindow.Padding = image.Point{0, 0}
+
+	style.Button.Padding = image.Point{33, 5}
+	style.Button.Hover.Data.Color = color.RGBA{7, 16, 52, 255}
+	style.Button.Active.Data.Color = color.RGBA{7, 16, 52, 255}
+	style.Button.TextHover = whiteColor
+	//style.Font = NavFont
+
+	window.SetStyle(style)
+}
+
+func StylePage(w nucular.MasterWindow) {
+	style := w.Style()
+	style.GroupWindow.FixedBackground.Data.Color = colorPrimary
+	style.GroupWindow.Padding = normalWindowPadding
+
+	w.SetStyle(style)
 }

@@ -2,13 +2,13 @@ package handlers
 
 import "github.com/aarzilli/nucular"
 
-type AddressRenderHandler struct {
+type AddressGeneratorHandler struct {
 }
 
-func (a *AddressRenderHandler) BeforeRender() {
+func (a *AddressGeneratorHandler) BeforeRender() {
 
 }
 
-func (a *AddressRenderHandler) Render(window *nucular.Window) {
+func (a *AddressGeneratorHandler) Render(window *nucular.Window) {
 
 }

@@ -23,5 +23,10 @@ func getPages() []page {
 			label:   "Generate Seed",
 			handler: &handlers.SeedGeneratorHandler{},
 		},
+		{
+			name:    "address",
+			label:   "Get Address",
+			handler: &handlers.AddressGeneratorHandler{},
+		},
 	}
 }
