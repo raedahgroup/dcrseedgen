@@ -109,3 +109,37 @@ func UseFont(window *Window, font font.Face) {
 	style.Font = font
 	window.Master().SetStyle(style)
 }
+
+func StyleClipboardInput(window *Window) {
+	style := window.Master().Style()
+	style.Font = FontNormal
+	style.Edit.Border = 0
+	style.Edit.Normal.Data.Color = colorPrimary
+	style.Edit.Hover.Data.Color = colorPrimary
+	style.Edit.Active.Data.Color = colorPrimary
+	window.Master().SetStyle(style)
+}
+
+func ResetInputStyle(window *Window) {
+	style := window.Master().Style()
+	style.Font = FontNormal
+	style.Edit.Border = 1
+	style.Edit.Normal.Data.Color = whiteColor
+	style.Edit.Hover.Data.Color = whiteColor
+	style.Edit.Active.Data.Color = whiteColor
+	window.Master().SetStyle(style)
+}
+
+func StyleNavButton(window *nucular.Window) {
+	style := window.Master().Style()
+	style.Button.Border = 0
+	style.Button.Normal.Data.Color = colorPrimary
+	window.Master().SetStyle(style)
+}
+
+func ResetButtonStyle(window *nucular.Window) {
+	style := window.Master().Style()
+	style.Button.Border = 1
+	style.Button.Normal.Data.Color = colorAccent
+	window.Master().SetStyle(style)
+}

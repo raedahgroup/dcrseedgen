@@ -42,7 +42,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	window := nucular.NewMasterWindow(nucular.WindowNoScrollbar, appName, app.render)
+	window := nucular.NewMasterWindow(nucular.WindowNoScrollbar|nucular.WindowContextualReplace, appName, app.render)
 	if err := helper.InitStyle(window); err != nil {
 		log.Fatal(err)
 	}
@@ -69,6 +69,7 @@ func (app *App) render(window *nucular.Window) {
 	window.Row(38).Dynamic(3)
 
 	window.Label("", "LC")
+	helper.StyleNavButton(window)
 	if window.ButtonText("Generate Seed") && app.currentPage != "seed" {
 		app.changePage("seed")
 	}
@@ -76,5 +77,7 @@ func (app *App) render(window *nucular.Window) {
 	if window.ButtonText("Generate Address") && app.currentPage != "address" {
 		app.changePage("address")
 	}
+	helper.ResetButtonStyle(window)
+
 	currentPage.handler.Render(window)
 }
