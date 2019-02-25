@@ -33,8 +33,8 @@ type SeedGeneratorHandler struct {
 
 const (
 	seedSize  = 32 // affects number of words // noOfWords = (seedSize+1)
-	noColumns = 4
-	noRows    = 9
+	noColumns = 5
+	noRows    = 7
 )
 
 func (h *SeedGeneratorHandler) BeforeRender() {
@@ -84,6 +84,7 @@ func (h *SeedGeneratorHandler) renderSeedPage(window *nucular.Window) {
 		return
 	}
 
+	window.Row(380).Dynamic(1)
 	if w := helper.NewWindow("Seed Page Content", window, 0); w != nil {
 		w.Row(20).Dynamic(1)
 
@@ -91,9 +92,9 @@ func (h *SeedGeneratorHandler) renderSeedPage(window *nucular.Window) {
 		helper.UseFont(w, helper.FontBold)
 		w.Label("Mnemonic Words:", "LC")
 
-		w.Row(235).Dynamic(1)
+		w.Row(187).Dynamic(1)
 		if colWindow := w.NewWindow("Word Columns", 0); colWindow != nil {
-			colWindow.Row(205).Dynamic(noColumns)
+			colWindow.Row(166).Dynamic(noColumns)
 			helper.UseFont(colWindow, helper.FontBold)
 
 			currentItem := 0
@@ -150,13 +151,14 @@ func newWordColumn(window *helper.Window, words []string, currentItem *int) {
 }
 
 func (h *SeedGeneratorHandler) renderVerifyPage(window *nucular.Window) {
+	window.Row(360).Dynamic(1)
 	if w := helper.NewWindow("Verify content", window, 0); w != nil {
 		w.Row(20).Dynamic(1)
 		helper.UseFont(w, helper.FontBold)
 		w.Label("Verify:", "LC")
 
 		helper.UseFont(w, helper.FontNormal)
-		w.Row(285).Dynamic(1)
+		w.Row(275).Dynamic(1)
 		if colWindow := w.NewWindow("", 0); colWindow != nil {
 			colWindow.Row(260).Dynamic(noColumns)
 			currentItem := 0

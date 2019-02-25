@@ -54,8 +54,6 @@ func DrawPageHeader(window *nucular.Window) {
 		group.Image(logo)
 		group.GroupEnd()
 	}
-	window.Row(10).Dynamic(1)
-	window.Label("", "LC")
 
 	style = window.Master().Style()
 	style.GroupWindow.FixedBackground.Data.Color = colorTable.ColorWindow
