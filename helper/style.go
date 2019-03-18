@@ -68,6 +68,28 @@ func InitStyle(window nucular.MasterWindow) error {
 	style.Edit.TextHover = colorAccent
 	style.Edit.CursorHover = colorAccent
 
+	// combo
+	style.Combo.LabelActive = colorAccent
+	style.Combo.LabelHover = colorAccent
+	style.Combo.LabelNormal = colorAccent
+	style.Combo.Active.Data.Color = whiteColor
+	style.Combo.Hover.Data.Color = whiteColor
+	style.Combo.Normal.Data.Color = whiteColor
+	style.Combo.Button.Normal.Data.Color = colorAccent
+	style.Combo.Button.Hover.Data.Color = colorAccent
+	style.Combo.Button.Active.Data.Color = colorAccent
+	style.Combo.Button.Border = 1
+	style.Combo.Button.BorderColor = colorAccent
+
+	// combo window
+	style.ComboWindow.Spacing = noPadding
+	style.ComboWindow.Padding = noPadding
+	style.ComboWindow.ScrollbarSize = noPadding
+
+	style.ComboWindow.Background = colorAccent
+	style.ComboWindow.Scaler.Data.Color = colorAccent
+	style.ComboWindow.FixedBackground.Data.Color = colorAccent
+
 	window.SetStyle(style)
 
 	return nil

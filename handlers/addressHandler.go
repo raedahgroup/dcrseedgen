@@ -3,6 +3,7 @@ package handlers
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
+	"strconv"
 
 	"github.com/aarzilli/nucular"
 	"github.com/decred/dcrd/chaincfg"
@@ -12,6 +13,11 @@ import (
 	"github.com/raedahgroup/dcrseedgen/helper"
 )
 
+type inputPair struct {
+	addressInput    nucular.TextEditor
+	privateKeyInput nucular.TextEditor
+}
+
 type AddressGeneratorHandler struct {
 	err              error
 	netOptions       []string
@@ -20,8 +26,9 @@ type AddressGeneratorHandler struct {
 	address    string
 	privateKey string
 
-	addressInput    nucular.TextEditor
-	privateKeyInput nucular.TextEditor
+	quantityInput nucular.TextEditor
+
+	inputPairs []inputPair
 }
 
 var (
@@ -30,17 +37,17 @@ var (
 
 func (a *AddressGeneratorHandler) BeforeRender() {
 	a.netOptions = []string{"Mainnet", "Testnet"}
+
 	a.selectedNetIndex = 0
 
-	a.addressInput.Flags = nucular.EditClipboard | nucular.EditNoCursor | nucular.EditBox
-	a.privateKeyInput.Flags = nucular.EditClipboard | nucular.EditNoCursor | nucular.EditBox
+	a.quantityInput.Flags = nucular.EditClipboard
+	a.quantityInput.Buffer = []rune("1")
 }
 
 func (a *AddressGeneratorHandler) Render(window *nucular.Window) {
 	if a.err != nil {
 		window.Row(20).Dynamic(1)
 		window.Label(a.err.Error(), "LC")
-		return
 	}
 
 	window.Row(360).Dynamic(1)
@@ -52,37 +59,30 @@ func (a *AddressGeneratorHandler) Render(window *nucular.Window) {
 			a.generateAddressAndPrivateKey(w)
 		}
 
-		if a.address != "" && a.privateKey != "" {
+		helper.UseFont(w, helper.FontBold)
+		if len(a.inputPairs) > 0 {
 			w.Row(10).Dynamic(1)
 			w.Label("", "LC")
 
-			w.Row(25).Dynamic(1)
-			helper.UseFont(w, helper.FontBold)
+			w.Row(30).Ratio(0.4, 0.6)
 			w.Label("Address:", "LC")
-
-			w.Row(35).Dynamic(1)
-			helper.UseFont(w, helper.FontNormal)
-			helper.StyleClipboardInput(w)
-			a.addressInput.Edit(w.Window)
-			helper.ResetInputStyle(w)
-
-			w.Row(10).Dynamic(1)
-			w.Label("", "LC")
-
-			w.Row(25).Dynamic(1)
-			helper.UseFont(w, helper.FontBold)
 			w.Label("Private Key:", "LC")
-
-			w.Row(35).Dynamic(1)
-			helper.StyleClipboardInput(w)
-			a.privateKeyInput.Edit(w.Window)
-			helper.ResetInputStyle(w)
 		}
+
+		helper.UseFont(w, helper.FontNormal)
+		helper.StyleClipboardInput(w)
+
+		w.Row(30).Ratio(0.4, 0.6)
+		for i := range a.inputPairs {
+			a.inputPairs[i].addressInput.Edit(w.Window)
+			a.inputPairs[i].privateKeyInput.Edit(w.Window)
+		}
+		helper.ResetInputStyle(w)
 		w.End()
 	}
 }
 
-func (a *AddressGeneratorHandler) generateAddressAndPrivateKey(window *helper.Window) {
+func (a *AddressGeneratorHandler) doGenerate(window *helper.Window) (string, string, error) {
 	defer window.Master().Changed()
 
 	var netPrivKeyID [2]byte
@@ -105,8 +105,7 @@ func (a *AddressGeneratorHandler) generateAddressAndPrivateKey(window *helper.Wi
 
 	key, err := ecdsa.GenerateKey(curve, rand.Reader)
 	if err != nil {
-		a.err = err
-		return
+		return "", "", err
 	}
 	pub := secp256k1.PublicKey{
 		Curve: curve,
@@ -123,14 +122,39 @@ func (a *AddressGeneratorHandler) generateAddressAndPrivateKey(window *helper.Wi
 		chainParams,
 		dcrec.STEcdsaSecp256k1)
 	if err != nil {
-		a.err = err
-		return
+		return "", "", err
 	}
 
 	privWif := dcrutil.NewWIF(priv, netPrivKeyID, dcrec.STEcdsaSecp256k1)
 	a.privateKey = privWif.String()
 	a.address = addr.Address()
+	privWif, err := dcrutil.NewWIF(priv, &chainParam, dcrec.STEcdsaSecp256k1)
+	if err != nil {
+		return "", "", err
+	}
 
-	a.addressInput.Buffer = []rune(a.address)
-	a.privateKeyInput.Buffer = []rune(a.privateKey)
+	return addr.EncodeAddress(), privWif.String(), nil
+}
+
+func (a *AddressGeneratorHandler) generateAddressAndPrivateKey(window *helper.Window) {
+	numberToGenerate, err := strconv.Atoi(string(a.quantityInput.Buffer))
+	if err != nil {
+		a.err = err
+		return
+	}
+
+	a.inputPairs = make([]inputPair, numberToGenerate)
+	for i := 0; i < numberToGenerate; i++ {
+		address, privateKey, err := a.doGenerate(window)
+		if err != nil {
+			a.err = err
+			return
+		}
+
+		a.inputPairs[i].addressInput.Flags = nucular.EditClipboard | nucular.EditNoCursor | nucular.EditBox
+		a.inputPairs[i].privateKeyInput.Flags = nucular.EditClipboard | nucular.EditNoCursor | nucular.EditBox
+
+		a.inputPairs[i].addressInput.Buffer = []rune(address)
+		a.inputPairs[i].privateKeyInput.Buffer = []rune(privateKey)
+	}
 }
