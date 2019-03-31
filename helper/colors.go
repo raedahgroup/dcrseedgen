@@ -8,6 +8,7 @@ var (
 	ColorDanger     = color.RGBA{215, 58, 73, 255}
 	ColorSuccess    = color.RGBA{227, 98, 9, 255}
 	colorPrimary    = color.RGBA{9, 20, 64, 255}
+	colorSecondary  = color.RGBA{46, 216, 163, 255}
 	colorAccent     = color.RGBA{237, 109, 71, 255}
 	buttonTextColor = colorAccent
 )
@@ -16,10 +17,10 @@ var colorTable = nstyle.ColorTable{
 	ColorText:                  whiteColor,
 	ColorWindow:                colorPrimary,
 	ColorHeader:                color.RGBA{175, 175, 175, 255},
-	ColorBorder:                colorAccent,
-	ColorButton:                buttonTextColor,
+	ColorBorder:                colorSecondary,
+	ColorButton:                colorSecondary,
 	ColorButtonHover:           whiteColor,
-	ColorButtonActive:          color.RGBA{0, 153, 204, 255},
+	ColorButtonActive:          colorSecondary,
 	ColorToggle:                color.RGBA{150, 150, 150, 255},
 	ColorToggleHover:           color.RGBA{120, 120, 120, 255},
 	ColorToggleCursor:          color.RGBA{175, 175, 175, 255},

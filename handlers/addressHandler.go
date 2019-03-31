@@ -3,9 +3,17 @@ package handlers
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
+	"encoding/csv"
+	"image"
+	"image/color"
+	"os"
+	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/aarzilli/nucular"
+	"github.com/aarzilli/nucular/label"
+	"github.com/aarzilli/nucular/rect"
 	"github.com/decred/dcrd/chaincfg"
 	"github.com/decred/dcrd/dcrec"
 	"github.com/decred/dcrd/dcrec/secp256k1"
@@ -29,6 +37,11 @@ type AddressGeneratorHandler struct {
 	quantityInput nucular.TextEditor
 
 	inputPairs []inputPair
+
+	popupBounds     rect.Rect
+	csvFolderInput  nucular.TextEditor
+	csvInputError   string
+	isGeneratingCSV bool
 }
 
 var (
@@ -42,6 +55,15 @@ func (a *AddressGeneratorHandler) BeforeRender() {
 
 	a.quantityInput.Flags = nucular.EditClipboard
 	a.quantityInput.Buffer = []rune("1")
+
+	a.csvFolderInput.Flags = nucular.EditClipboard | nucular.EditSimple
+
+	a.popupBounds = rect.Rect{
+		X: 130,
+		Y: 60,
+		W: 390,
+		H: 150,
+	}
 }
 
 func (a *AddressGeneratorHandler) Render(window *nucular.Window) {
@@ -50,12 +72,23 @@ func (a *AddressGeneratorHandler) Render(window *nucular.Window) {
 		window.Label(a.err.Error(), "LC")
 	}
 
-	window.Row(360).Dynamic(1)
+	window.Row(300).Dynamic(1)
 	if w := helper.NewWindow("Address Page Content", window, 0); w != nil {
 		w.Row(helper.ButtonHeight).Ratio(0.2, 0.2)
 		w.ComboSimple(a.netOptions, a.selectedNetIndex, 30)
+		w.Row(10).Dynamic(1)
+		w.Label("", "LC")
 
-		if w.ButtonText("Generate Address") {
+		w.Row(10).Dynamic(3)
+		w.Label("Net Type:", "LC")
+		w.Label("Number to generate:", "LC")
+		w.Label("", "LC")
+
+		w.Row(35).Static(200, 200, 150)
+		a.selectedNetIndex = w.ComboSimple(a.netOptions, a.selectedNetIndex, 30)
+		a.quantityInput.Edit(w.Window)
+
+		if w.ButtonText("Generate") {
 			a.generateAddressAndPrivateKey(w)
 		}
 
@@ -64,7 +97,7 @@ func (a *AddressGeneratorHandler) Render(window *nucular.Window) {
 			w.Row(10).Dynamic(1)
 			w.Label("", "LC")
 
-			w.Row(30).Ratio(0.4, 0.6)
+			w.Row(26).Ratio(0.4, 0.6)
 			w.Label("Address:", "LC")
 			w.Label("Private Key:", "LC")
 		}
@@ -72,13 +105,29 @@ func (a *AddressGeneratorHandler) Render(window *nucular.Window) {
 		helper.UseFont(w, helper.FontNormal)
 		helper.StyleClipboardInput(w)
 
-		w.Row(30).Ratio(0.4, 0.6)
+		w.Row(27).Ratio(0.39, 0.61)
 		for i := range a.inputPairs {
 			a.inputPairs[i].addressInput.Edit(w.Window)
 			a.inputPairs[i].privateKeyInput.Edit(w.Window)
 		}
 		helper.ResetInputStyle(w)
 		w.End()
+	}
+
+	if len(a.inputPairs) > 0 {
+		window.Row(50).Dynamic(1)
+		if w := helper.NewWindow("Create csv button", window, 0); w != nil {
+			w.Row(25).Dynamic(10)
+			if w.ButtonText("") {
+				w.Master().PopupOpen("Export as csv", nucular.WindowTitle|nucular.WindowDynamic|nucular.WindowNoScrollbar, a.popupBounds, true, a.renderCSVPopup)
+			}
+
+			if w.Input().Mouse.HoveringRect(w.LastWidgetBounds) {
+				w.Tooltip("Export as csv")
+			}
+
+			w.End()
+		}
 	}
 }
 
@@ -157,4 +206,96 @@ func (a *AddressGeneratorHandler) generateAddressAndPrivateKey(window *helper.Wi
 		a.inputPairs[i].addressInput.Buffer = []rune(address)
 		a.inputPairs[i].privateKeyInput.Buffer = []rune(privateKey)
 	}
+}
+
+func (a *AddressGeneratorHandler) renderCSVPopup(window *nucular.Window) {
+	masterWindow := window.Master()
+
+	// set popup style
+	style := window.Master().Style()
+	style.NormalWindow.Padding = image.Point{20, 50}
+	//style.NormalWindow.Background = color.RGBA{0xff, 0xff, 0xff, 0xff}
+	masterWindow.SetStyle(style)
+
+	defer func() {
+		// reset page style
+		style.NormalWindow.Padding = image.Point{0, 0}
+		masterWindow.SetStyle(style)
+	}()
+
+	// render popup
+	window.Row(20).Dynamic(1)
+	window.Label("Target folder:", "LC")
+
+	window.Row(25).Dynamic(1)
+	a.csvFolderInput.Edit(window)
+
+	if a.csvInputError != "" {
+		window.Row(10).Dynamic(1)
+		window.LabelColored(a.csvInputError, "LC", color.RGBA{205, 32, 32, 255})
+	}
+
+	window.Row(25).Static(65, 65)
+	if window.Button(label.T("Close"), false) {
+		window.Close()
+	}
+
+	buttonText := "Submit"
+	if a.isGeneratingCSV {
+		buttonText = "Submitting..."
+	}
+
+	if window.Button(label.T(buttonText), false) {
+		if a.validateCSVForm() {
+			if a.generateCSV() {
+				window.Close()
+			}
+			return
+		}
+		masterWindow.Changed()
+	}
+}
+
+func (a *AddressGeneratorHandler) validateCSVForm() bool {
+	targetFolder := string(a.csvFolderInput.Buffer)
+
+	if targetFolder == "" {
+		a.csvInputError = "Target folder is required"
+		return false
+	}
+
+	a.csvInputError = ""
+	return true
+}
+
+func (a *AddressGeneratorHandler) generateCSV() bool {
+	filename := "dcrseedgen_address_" + strconv.Itoa(int(time.Now().Unix())) + ".csv"
+	fp := filepath.Join(string(a.csvFolderInput.Buffer), filename)
+
+	file, err := os.Create(fp)
+	if err != nil {
+		a.csvInputError = err.Error()
+		return false
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	data := [][]string{{"Address", "Private Key"}}
+
+	for _, inputPair := range a.inputPairs {
+		item := []string{string(inputPair.addressInput.Buffer), string(inputPair.privateKeyInput.Buffer)}
+		data = append(data, item)
+	}
+
+	for _, value := range data {
+		err := writer.Write(value)
+		if err != nil {
+			a.csvInputError = err.Error()
+			return false
+		}
+	}
+
+	return true
 }
