@@ -45,7 +45,7 @@ func DrawPageHeader(window *nucular.Window) {
 	style := window.Master().Style()
 	style.GroupWindow.FixedBackground.Data.Color = whiteColor
 	style.NormalWindow.Padding = noPadding
-	style.GroupWindow.Padding = noPadding
+	style.GroupWindow.Padding = image.Point{10, 0}
 	window.Master().SetStyle(style)
 
 	if group := window.GroupBegin("header", 0); window != nil {
