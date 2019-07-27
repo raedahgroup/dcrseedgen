@@ -45,7 +45,7 @@ func (a *AddressGeneratorHandler) Render(window *nucular.Window) {
 
 	window.Row(360).Dynamic(1)
 	if w := helper.NewWindow("Address Page Content", window, 0); w != nil {
-		w.Row(30).Dynamic(2)
+		w.Row(30).Dynamic(4)
 		w.ComboSimple(a.netOptions, a.selectedNetIndex, 30)
 
 		if w.ButtonText("Generate Address") {

@@ -121,9 +121,7 @@ func (h *SeedGeneratorHandler) renderSeedPage(window *nucular.Window) {
 		}
 
 		helper.UseFont(w, helper.FontNormal)
-		w.Row(40).Ratio(0.5, 0.25, 0.25)
-		w.Label("", "LC")
-
+		w.Row(30).Dynamic(5)
 		if w.ButtonText("Verify") {
 			h.verifyMessage = &verifyMessage{}
 			h.isShowingVerifyPage = true
@@ -182,8 +180,7 @@ func (h *SeedGeneratorHandler) renderVerifyPage(window *nucular.Window) {
 			w.LabelColored(h.verifyMessage.message, "LC", color)
 		}
 
-		w.Row(40).Ratio(0.5, 0.25, 0.25)
-		w.Label("", "LC")
+		w.Row(30).Dynamic(4)
 		if w.ButtonText("Verify") {
 			msg := &verifyMessage{}
 			if h.doVerify(w) {

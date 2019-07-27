@@ -78,7 +78,7 @@ func loadFonts() error {
 		return err
 	}
 
-	FontNormal, err = getFont(13, 72, fontData)
+	FontNormal, err = getFont(15, 72, fontData)
 	if err != nil {
 		return err
 	}
@@ -133,7 +133,9 @@ func ResetInputStyle(window *Window) {
 func StyleNavButton(window *nucular.Window) {
 	style := window.Master().Style()
 	style.Button.Border = 0
-	style.Button.Normal.Data.Color = colorPrimary
+	style.Button.Normal.Data.Color = colorAccent
+	style.Button.Hover.Data.Color = whiteColor
+	style.Button.TextHover = colorAccent
 	window.Master().SetStyle(style)
 }
 

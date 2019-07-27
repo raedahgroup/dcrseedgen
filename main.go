@@ -66,9 +66,7 @@ func (app *App) render(window *nucular.Window) {
 	}
 
 	helper.DrawPageHeader(window)
-	window.Row(38).Dynamic(3)
-
-	window.Label("", "LC")
+	window.Row(30).Dynamic(4)
 	helper.StyleNavButton(window)
 	if window.ButtonText("Generate Seed") && app.currentPage != "seed" {
 		app.changePage("seed")
@@ -78,6 +76,5 @@ func (app *App) render(window *nucular.Window) {
 		app.changePage("address")
 	}
 	helper.ResetButtonStyle(window)
-
 	currentPage.handler.Render(window)
 }
