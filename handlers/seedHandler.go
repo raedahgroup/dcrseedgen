@@ -121,7 +121,7 @@ func (h *SeedGeneratorHandler) renderSeedPage(window *nucular.Window) {
 		}
 
 		helper.UseFont(w, helper.FontNormal)
-		w.Row(30).Dynamic(5)
+		w.Row(30).Dynamic(6)
 		if w.ButtonText("Verify") {
 			h.verifyMessage = &verifyMessage{}
 			h.isShowingVerifyPage = true
