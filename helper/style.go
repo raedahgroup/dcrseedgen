@@ -27,7 +27,8 @@ var (
 )
 
 const (
-	scaling = 1.1
+	scaling      = 1.1
+	ButtonHeight = 40
 )
 
 func LoadLogo() error {
