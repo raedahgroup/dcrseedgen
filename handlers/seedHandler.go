@@ -151,7 +151,7 @@ func newWordColumn(window *helper.Window, words []string, currentItem *int) {
 func (h *SeedGeneratorHandler) renderVerifyPage(window *nucular.Window) {
 	window.Row(370).Dynamic(1)
 	if w := helper.NewWindow("Verify content", window, 0); w != nil {
-		w.Row(20).Dynamic(1)
+		w.Row(33).Dynamic(1)
 		helper.UseFont(w, helper.FontBold)
 		w.Label("Verify:", "LC")
 
