@@ -19,8 +19,8 @@ var (
 	FontBold   font.Face
 	FontNormal font.Face
 
-	normalWindowPadding = image.Point{10, 0}
-	groupWindowPadding  = image.Point{10, 0}
+	normalWindowPadding = image.Point{8, 0}
+	groupWindowPadding  = image.Point{8, 0}
 	noPadding           = image.Point{0, 0}
 
 	logo *image.RGBA
@@ -79,7 +79,7 @@ func loadFonts() error {
 		return err
 	}
 
-	FontNormal, err = getFont(15, 72, fontData)
+	FontNormal, err = getFont(14, 72, fontData)
 	if err != nil {
 		return err
 	}
