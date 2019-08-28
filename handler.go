@@ -1,32 +1,34 @@
 package main
 
 import (
-	"github.com/aarzilli/nucular"
+	"fyne.io/fyne"
+	"fyne.io/fyne/theme"
 	"github.com/raedahgroup/dcrseedgen/handlers"
+	"github.com/raedahgroup/dcrseedgen/handlers/seed"
 )
 
-type Handler interface {
+type handler interface {
 	BeforeRender()
-	Render(*nucular.Window)
+	Render() fyne.CanvasObject
 }
 
 type page struct {
-	name    string
 	label   string
-	handler Handler
+	icon    fyne.Resource
+	handler handler
 }
 
-func getPages() []page {
+func getHandlers() []page {
 	return []page{
 		{
-			name:    "seed",
 			label:   "Generate Seed",
-			handler: &handlers.SeedGeneratorHandler{},
+			icon:    theme.ConfirmIcon(),
+			handler: &seed.SeedHandler{},
 		},
 		{
-			name:    "address",
-			label:   "Get Address",
-			handler: &handlers.AddressGeneratorHandler{},
+			label:   "Generate Addresses",
+			icon:    theme.HomeIcon(),
+			handler: &handlers.AddressHandler{},
 		},
 	}
 }

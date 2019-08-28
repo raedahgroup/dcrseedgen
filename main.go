@@ -1,83 +1,60 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
-	"github.com/aarzilli/nucular"
+	"fyne.io/fyne"
+	"fyne.io/fyne/app"
+	"fyne.io/fyne/widget"
 	"github.com/raedahgroup/dcrseedgen/helper"
 )
 
 type App struct {
-	currentPage  string
-	pageChanged  bool
-	masterWindow nucular.MasterWindow
-	pages        map[string]page
 }
 
 const (
-	appName  = "DCR Seed Generator"
-	homePage = "seed"
-
-	navPaneWidth            = 220
-	contentPaneXOffset      = 25
-	contentPaneWidthPadding = 55
+	appName = "DCR Seed Generator"
 )
 
 func main() {
-	app := &App{
-		pageChanged: true,
-		currentPage: homePage,
-	}
-
-	// register pages
-	pages := getPages()
-	app.pages = make(map[string]page, len(pages))
-	for _, page := range pages {
-		app.pages[page.name] = page
-	}
-
-	// load logo once
-	err := helper.LoadLogo()
+	err := helper.InitFonts()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(fmt.Errorf("error loading fonts: %s", err.Error()))
 	}
 
-	window := nucular.NewMasterWindow(nucular.WindowNoScrollbar|nucular.WindowContextualReplace, appName, app.render)
-	if err := helper.InitStyle(window); err != nil {
-		log.Fatal(err)
-	}
+	app := app.New()
+	app.Settings().SetTheme(helper.DefaultTheme)
+	masterWindow := app.NewWindow(appName)
 
-	app.masterWindow = window
-	window.Main()
+	navTabs := widget.NewTabContainer(getPages()...)
+	navTabs.SetTabLocation(widget.TabLocationLeading)
+
+	masterWindow.Resize(fyne.NewSize(1100, 750))
+	masterWindow.CenterOnScreen()
+	masterWindow.SetContent(navTabs)
+	masterWindow.ShowAndRun()
+
 }
 
-func (app *App) changePage(page string) {
-	app.currentPage = page
-	app.pageChanged = true
-	app.masterWindow.Changed()
+func getPages() []*widget.TabItem {
+	handlers := getHandlers()
+	pages := make([]*widget.TabItem, len(handlers))
+
+	for i, v := range handlers {
+		pages[i] = widget.NewTabItemWithIcon(v.label, v.icon, render(v.handler))
+	}
+	return pages
 }
 
-func (app *App) render(window *nucular.Window) {
-	currentPage := app.pages[app.currentPage]
-
-	if app.pageChanged {
-		currentPage.handler.BeforeRender()
-		app.pageChanged = false
-	}
-
-	helper.DrawPageHeader(window)
-	window.Row(38).Dynamic(3)
-
-	window.Label("", "LC")
-	helper.StyleNavButton(window)
-	if window.ButtonText("Generate Seed") && app.currentPage != "seed" {
-		app.changePage("seed")
-	}
-
-	if window.ButtonText("Generate Address") && app.currentPage != "address" {
-		app.changePage("address")
-	}
-	helper.ResetButtonStyle(window)
-
-	currentPage.handler.Render(window)
+func render(h handler) fyne.CanvasObject {
+	// call before render method to load required data and setup variables
+	h.BeforeRender()
+	container := widget.NewScrollContainer(
+		widget.NewVBox(
+			h.Render(),
+		),
+	)
+	container.Resize(fyne.NewSize(1100, 750))
+	return container
 }
