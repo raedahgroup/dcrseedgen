@@ -120,6 +120,9 @@ func (h *SeedHandler) renderButtons() fyne.CanvasObject {
 
 func (h *SeedHandler) goToVerify() {
 	h.isShowingVerifyPage = true
+	if h.container.Children != nil {
+		h.container.Children = []fyne.CanvasObject{}
+	}
 	h.refresh(false)
 }
 
