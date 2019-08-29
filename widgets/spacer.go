@@ -1,4 +1,4 @@
-package helper
+package widgets
 
 import (
 	"fyne.io/fyne"

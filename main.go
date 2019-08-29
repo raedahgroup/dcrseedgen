@@ -28,9 +28,10 @@ func main() {
 	masterWindow := app.NewWindow(appName)
 
 	navTabs := widget.NewTabContainer(getPages()...)
-	navTabs.SetTabLocation(widget.TabLocationLeading)
+	navTabs.SetTabLocation(widget.TabLocationTop)
 
-	masterWindow.Resize(fyne.NewSize(1100, 750))
+	masterWindow.Resize(fyne.NewSize(1070, 750))
+	masterWindow.SetFixedSize(true)
 	masterWindow.CenterOnScreen()
 	masterWindow.SetContent(navTabs)
 	masterWindow.ShowAndRun()
@@ -51,10 +52,8 @@ func render(h handler) fyne.CanvasObject {
 	// call before render method to load required data and setup variables
 	h.BeforeRender()
 	container := widget.NewScrollContainer(
-		widget.NewVBox(
-			h.Render(),
-		),
+		h.Render(),
 	)
-	container.Resize(fyne.NewSize(1100, 750))
+	//container.Resize(fyne.NewSize(970, 750))
 	return container
 }

@@ -8,10 +8,10 @@ import (
 )
 
 const (
-	padding            = 7
+	padding            = 6
 	fontSize           = 19
-	scrollbarSize      = 3
-	smallScrollbarSize = 1
+	scrollbarSize      = 5
+	smallScrollbarSize = 3
 )
 
 var (
@@ -36,7 +36,7 @@ func (Theme) ButtonColor() color.Color {
 }
 
 func (Theme) DisabledButtonColor() color.Color {
-	return whiteColor
+	return secondaryColor
 }
 
 func (Theme) HyperlinkColor() color.Color {
@@ -60,7 +60,7 @@ func (Theme) DisabledIconColor() color.Color {
 }
 
 func (Theme) PlaceHolderColor() color.Color {
-	return secondaryColor
+	return whiteColor
 }
 
 func (Theme) PrimaryColor() color.Color {
@@ -112,7 +112,7 @@ func (Theme) Padding() int {
 }
 
 func (Theme) IconInlineSize() int {
-	return 20
+	return 50
 }
 
 func (Theme) ScrollBarSize() int {

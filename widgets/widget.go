@@ -1,4 +1,4 @@
-package helper
+package widgets
 
 import (
 	"fyne.io/fyne"
@@ -11,4 +11,12 @@ func Text(text string) *widget.Label {
 
 func BoldText(text string) *widget.Label {
 	return widget.NewLabelWithStyle(text, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+}
+
+func LoadingText(text string) *widget.Label {
+	if text == "" {
+		text = "Loading"
+	}
+	text += "..."
+	return widget.NewLabelWithStyle(text, fyne.TextAlignLeading, fyne.TextStyle{Bold: true, Italic: true})
 }
