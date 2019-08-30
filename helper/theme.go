@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	padding            = 6
+	padding            = 7
 	fontSize           = 19
 	scrollbarSize      = 5
 	smallScrollbarSize = 3

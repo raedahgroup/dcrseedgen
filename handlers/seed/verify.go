@@ -1,6 +1,8 @@
 package seed
 
 import (
+	"fmt"
+
 	"fyne.io/fyne"
 	"fyne.io/fyne/layout"
 	"fyne.io/fyne/widget"
@@ -42,7 +44,24 @@ func (h *SeedHandler) renderVerifyButtons() fyne.CanvasObject {
 }
 
 func (h *SeedHandler) verifySeed() {
+	wrong := false
 
+	for _ = range h.columns {
+		for columnIndex := range h.columns {
+			for itemIndex := range h.columns[columnIndex].words {
+				if h.columns[columnIndex].words[itemIndex] != h.columns[columnIndex].inputs[itemIndex].Text {
+					wrong = true
+				}
+			}
+		}
+	}
+
+	if !wrong {
+		widgets.InfoDialog("Successfully verified words", h.masterWindow)
+		return
+	}
+
+	widgets.ErrorDialog(fmt.Errorf("Incorrect verification words"), h.masterWindow)
 }
 
 func (h *SeedHandler) goToSeedPage() {

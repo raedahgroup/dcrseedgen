@@ -8,7 +8,7 @@ import (
 )
 
 type handler interface {
-	BeforeRender()
+	BeforeRender(fyne.Window)
 	Render() fyne.CanvasObject
 }
 

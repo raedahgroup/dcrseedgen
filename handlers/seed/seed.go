@@ -24,6 +24,7 @@ type (
 		isShowingVerifyPage bool
 		isGenerating        bool
 		container           *widget.Box
+		masterWindow        fyne.Window
 	}
 )
 
@@ -34,7 +35,9 @@ const (
 	horizontalSpacing = 10
 )
 
-func (h *SeedHandler) BeforeRender() {
+func (h *SeedHandler) BeforeRender(masterWindow fyne.Window) {
+	h.masterWindow = masterWindow
+
 	if h.isShowingVerifyPage {
 		return
 	}

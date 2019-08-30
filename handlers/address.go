@@ -1,6 +1,10 @@
 package handlers
 
 import (
+	"errors"
+	"fmt"
+	"strconv"
+
 	"fyne.io/fyne"
 	"fyne.io/fyne/widget"
 	"github.com/raedahgroup/dcrseedgen/helper"
@@ -8,15 +12,28 @@ import (
 )
 
 type (
+	keyPair struct {
+		address    string
+		privateKey string
+	}
+
+	components struct {
+		selectComponent            *widget.Select
+		numberOfAddressesComponent *widget.Entry
+	}
+
 	AddressHandler struct {
-		networks  []string
-		selected  string
-		addresses map[string]string
-		container *widget.Box
+		networks     []string
+		selected     string
+		addresses    []keyPair
+		container    *widget.Box
+		masterWindow fyne.Window
+		components
 	}
 )
 
-func (h *AddressHandler) BeforeRender() {
+func (h *AddressHandler) BeforeRender(masterWindow fyne.Window) {
+	h.masterWindow = masterWindow
 	h.container = widget.NewVBox()
 	h.networks = []string{
 		"Mainnet",
@@ -24,7 +41,18 @@ func (h *AddressHandler) BeforeRender() {
 		"Simnet",
 		"Regnet",
 	}
-	h.addresses = make(map[string]string)
+
+	h.addresses = []keyPair{}
+	if h.selectComponent == nil {
+		h.selectComponent = widget.NewSelect(h.networks, h.setSelected)
+		h.selectComponent.Selected = h.networks[0]
+		widget.Refresh(h.selectComponent)
+	}
+
+	if h.numberOfAddressesComponent == nil {
+		h.numberOfAddressesComponent = widget.NewEntry()
+		h.numberOfAddressesComponent.SetText("1")
+	}
 }
 
 func (h *AddressHandler) Render() fyne.CanvasObject {
@@ -38,21 +66,27 @@ func (h *AddressHandler) Render() fyne.CanvasObject {
 			h.renderTable(),
 		),
 	}
+
+	if len(h.addresses) > 0 {
+		h.container.Append(
+			widget.NewHBox(
+				widget.NewButton("Export as csv", h.exportAsCSV),
+			),
+		)
+	}
+
 	widget.Refresh(h.container)
 
 	return h.container
 }
 
 func (h *AddressHandler) renderForm() fyne.CanvasObject {
-	numberToGenerateInput := widget.NewEntry()
-	numberToGenerateInput.SetPlaceHolder("Number of adresses")
-
 	return widget.NewHBox(
 		widgets.Text("Network:"),
-		widget.NewSelect(h.networks, h.setSelected),
+		h.selectComponent,
 		widgets.NewHSpacer(10),
-		widgets.Text("Qty:"),
-		numberToGenerateInput,
+		widgets.Text("How many addresses?:"),
+		h.numberOfAddressesComponent,
 		widget.NewButton("Generate", h.generateAddressesAndPrivateKeys),
 	)
 }
@@ -71,10 +105,10 @@ func (h *AddressHandler) renderTable() fyne.CanvasObject {
 		)
 	}
 
-	for i, v := range h.addresses {
+	for _, v := range h.addresses {
 		table.AddRowWithTextCells(
-			widgets.Text(i),
-			widgets.Text(v),
+			widgets.Text(v.address),
+			widgets.Text(v.privateKey),
 		)
 	}
 
@@ -83,13 +117,74 @@ func (h *AddressHandler) renderTable() fyne.CanvasObject {
 	)
 }
 
+func (h *AddressHandler) exportAsCSV() {
+	data := make([][]string, len(h.addresses))
+	for i, v := range h.addresses {
+		data[i] = []string{v.address, v.privateKey}
+	}
+
+	filename, err := helper.GenerateCSV(data)
+	if err != nil {
+		widgets.ErrorDialog(fmt.Errorf("error exporting csv: %s", err.Error()), h.masterWindow)
+		return
+	}
+
+	widgets.InfoDialog(fmt.Sprintf("Succesfully exported file to %s", filename), h.masterWindow)
+}
+
 func (h *AddressHandler) generateAddressesAndPrivateKeys() {
-	address, key, _ := helper.GenerateAddressAndPrivateKey(h.selected)
-	h.addresses[address] = key
+	// first clear addresses
+	h.addresses = []keyPair{}
+	numberOfAddresses, err := h.getNumberOfAddresses()
+	if err != nil {
+		widgets.ErrorDialog(err, h.masterWindow)
+		return
+	}
+
+	selectedNetwork, err := h.getSelectedNetwork()
+	if err != nil {
+		widgets.ErrorDialog(err, h.masterWindow)
+		return
+	}
+
+	h.addresses = make([]keyPair, numberOfAddresses)
+
+	for i := 0; i < numberOfAddresses; i++ {
+		k := keyPair{}
+		k.address, k.privateKey, _ = helper.GenerateAddressAndPrivateKey(selectedNetwork)
+		k.address += "       "
+		h.addresses[i] = k
+	}
 
 	if h.container.Children != nil {
 		h.container.Children = []fyne.CanvasObject{}
 	}
-
 	h.Render()
+}
+
+func (h *AddressHandler) getSelectedNetwork() (string, error) {
+	selectedNetwork := h.components.selectComponent.Selected
+	if selectedNetwork == "" {
+		return "", errors.New("Please select a network")
+	}
+
+	return selectedNetwork, nil
+}
+
+func (h *AddressHandler) getNumberOfAddresses() (int, error) {
+	numStr := h.numberOfAddressesComponent.Text
+	if numStr == "" {
+		return 0, errors.New("Please specify the number of addresses to generate")
+	}
+
+	numberOfAddresses, err := strconv.Atoi(h.numberOfAddressesComponent.Text)
+	if err != nil {
+		return 0, errors.New("Number of addresses to generate must be a valid number")
+	}
+
+	if numberOfAddresses == 0 {
+		return 0, errors.New("Number of addresses must be greater than 0")
+	}
+
+	return numberOfAddresses, nil
 }
