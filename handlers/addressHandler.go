@@ -45,7 +45,7 @@ func (a *AddressGeneratorHandler) Render(window *nucular.Window) {
 
 	window.Row(360).Dynamic(1)
 	if w := helper.NewWindow("Address Page Content", window, 0); w != nil {
-		w.Row(30).Dynamic(2)
+		w.Row(helper.ButtonHeight).Ratio(0.2, 0.2)
 		w.ComboSimple(a.netOptions, a.selectedNetIndex, 30)
 
 		if w.ButtonText("Generate Address") {
@@ -85,11 +85,22 @@ func (a *AddressGeneratorHandler) Render(window *nucular.Window) {
 func (a *AddressGeneratorHandler) generateAddressAndPrivateKey(window *helper.Window) {
 	defer window.Master().Changed()
 
-	var chainParam chaincfg.Params
-	if a.netOptions[a.selectedNetIndex] == "Mainnet" {
-		chainParam = chaincfg.MainNetParams
-	} else {
-		chainParam = chaincfg.TestNet3Params
+	var netPrivKeyID [2]byte
+	var chainParams *chaincfg.Params
+	switch a.netOptions[a.selectedNetIndex] {
+	case "Testnet3":
+		netPrivKeyID = [2]byte{0x23, 0x0e} // starts with Pt
+		chainParams = chaincfg.TestNet3Params()
+	case "Regnet":
+		netPrivKeyID = [2]byte{0x22, 0xfe} // starts with Pr
+		chainParams = chaincfg.RegNetParams()
+	case "Simnet":
+		netPrivKeyID = [2]byte{0x23, 0x07} // starts with Ps
+		chainParams = chaincfg.SimNetParams()
+	default:
+		netPrivKeyID = [2]byte{0x22, 0xde} // starts with Pm
+		chainParams = chaincfg.MainNetParams()
+
 	}
 
 	key, err := ecdsa.GenerateKey(curve, rand.Reader)
@@ -109,21 +120,16 @@ func (a *AddressGeneratorHandler) generateAddressAndPrivateKey(window *helper.Wi
 
 	addr, err := dcrutil.NewAddressPubKeyHash(
 		dcrutil.Hash160(pub.SerializeCompressed()),
-		&chainParam,
+		chainParams,
 		dcrec.STEcdsaSecp256k1)
 	if err != nil {
 		a.err = err
 		return
 	}
 
-	privWif, err := dcrutil.NewWIF(priv, &chainParam, dcrec.STEcdsaSecp256k1)
-	if err != nil {
-		a.err = err
-		return
-	}
-
-	a.address = addr.EncodeAddress()
+	privWif := dcrutil.NewWIF(priv, netPrivKeyID, dcrec.STEcdsaSecp256k1)
 	a.privateKey = privWif.String()
+	a.address = addr.Address()
 
 	a.addressInput.Buffer = []rune(a.address)
 	a.privateKeyInput.Buffer = []rune(a.privateKey)

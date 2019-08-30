@@ -121,9 +121,7 @@ func (h *SeedGeneratorHandler) renderSeedPage(window *nucular.Window) {
 		}
 
 		helper.UseFont(w, helper.FontNormal)
-		w.Row(40).Ratio(0.5, 0.25, 0.25)
-		w.Label("", "LC")
-
+		w.Row(helper.ButtonHeight).Ratio(0.15, 0.18)
 		if w.ButtonText("Verify") {
 			h.verifyMessage = &verifyMessage{}
 			h.isShowingVerifyPage = true
@@ -151,16 +149,16 @@ func newWordColumn(window *helper.Window, words []string, currentItem *int) {
 }
 
 func (h *SeedGeneratorHandler) renderVerifyPage(window *nucular.Window) {
-	window.Row(360).Dynamic(1)
+	window.Row(370).Dynamic(1)
 	if w := helper.NewWindow("Verify content", window, 0); w != nil {
-		w.Row(20).Dynamic(1)
+		w.Row(33).Dynamic(1)
 		helper.UseFont(w, helper.FontBold)
 		w.Label("Verify:", "LC")
 
 		helper.UseFont(w, helper.FontNormal)
-		w.Row(275).Dynamic(1)
+		w.Row(240).Dynamic(1)
 		if colWindow := w.NewWindow("", 0); colWindow != nil {
-			colWindow.Row(260).Dynamic(noColumns)
+			colWindow.Row(230).Dynamic(noColumns)
 			currentItem := 0
 			for index := range h.columns {
 				newInputColumn(colWindow, h.columns[index].inputs, &currentItem)
@@ -182,8 +180,7 @@ func (h *SeedGeneratorHandler) renderVerifyPage(window *nucular.Window) {
 			w.LabelColored(h.verifyMessage.message, "LC", color)
 		}
 
-		w.Row(40).Ratio(0.5, 0.25, 0.25)
-		w.Label("", "LC")
+		w.Row(helper.ButtonHeight).Ratio(0.12, 0.12)
 		if w.ButtonText("Verify") {
 			msg := &verifyMessage{}
 			if h.doVerify(w) {

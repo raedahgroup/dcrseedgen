@@ -40,21 +40,17 @@ func (w *Window) Style() {
 }
 
 func DrawPageHeader(window *nucular.Window) {
-	window.Row(70).Dynamic(1)
-
 	style := window.Master().Style()
+	style.GroupWindow.Padding = image.Point{12, 0}
 	style.GroupWindow.FixedBackground.Data.Color = whiteColor
-	style.NormalWindow.Padding = noPadding
-	style.GroupWindow.Padding = noPadding
 	window.Master().SetStyle(style)
 
+	window.Row(70).Dynamic(1)
 	if group := window.GroupBegin("header", 0); window != nil {
-		// style window
 		group.Row(60).Dynamic(1)
 		group.Image(logo)
 		group.GroupEnd()
 	}
-
 	style = window.Master().Style()
 	style.GroupWindow.FixedBackground.Data.Color = colorTable.ColorWindow
 	style.GroupWindow.Padding = groupWindowPadding

@@ -66,18 +66,23 @@ func (app *App) render(window *nucular.Window) {
 	}
 
 	helper.DrawPageHeader(window)
-	window.Row(38).Dynamic(3)
-
-	window.Label("", "LC")
-	helper.StyleNavButton(window)
-	if window.ButtonText("Generate Seed") && app.currentPage != "seed" {
-		app.changePage("seed")
-	}
-
-	if window.ButtonText("Generate Address") && app.currentPage != "address" {
-		app.changePage("address")
-	}
-	helper.ResetButtonStyle(window)
-
+	app.renderNavButtons(window)
 	currentPage.handler.Render(window)
+}
+
+func (app *App) renderNavButtons(window *nucular.Window) {
+	window.Row(helper.ButtonHeight + 10).Dynamic(1)
+	if group := window.GroupBegin("nav-window", 0); group != nil {
+		group.Row(helper.ButtonHeight).Ratio(0.18, 0.23)
+		helper.StyleNavButton(window)
+		if group.ButtonText("Generate Seed") && app.currentPage != "seed" {
+			app.changePage("seed")
+		}
+
+		if group.ButtonText("Generate Address") && app.currentPage != "address" {
+			app.changePage("address")
+		}
+		helper.ResetButtonStyle(window)
+		group.GroupEnd()
+	}
 }

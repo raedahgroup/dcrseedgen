@@ -19,15 +19,16 @@ var (
 	FontBold   font.Face
 	FontNormal font.Face
 
-	normalWindowPadding = image.Point{10, 0}
-	groupWindowPadding  = image.Point{10, 0}
+	normalWindowPadding = image.Point{8, 0}
+	groupWindowPadding  = image.Point{8, 0}
 	noPadding           = image.Point{0, 0}
 
 	logo *image.RGBA
 )
 
 const (
-	scaling = 1.1
+	scaling      = 1.1
+	ButtonHeight = 40
 )
 
 func LoadLogo() error {
@@ -78,7 +79,7 @@ func loadFonts() error {
 		return err
 	}
 
-	FontNormal, err = getFont(13, 72, fontData)
+	FontNormal, err = getFont(14, 72, fontData)
 	if err != nil {
 		return err
 	}
@@ -133,7 +134,9 @@ func ResetInputStyle(window *Window) {
 func StyleNavButton(window *nucular.Window) {
 	style := window.Master().Style()
 	style.Button.Border = 0
-	style.Button.Normal.Data.Color = colorPrimary
+	style.Button.Normal.Data.Color = colorAccent
+	style.Button.Hover.Data.Color = whiteColor
+	style.Button.TextHover = colorAccent
 	window.Master().SetStyle(style)
 }
 
