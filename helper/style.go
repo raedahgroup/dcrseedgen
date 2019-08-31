@@ -104,11 +104,7 @@ func loadFonts() error {
 		return err
 	}
 
-<<<<<<< HEAD
 	FontNormal, err = getFont(14, 72, fontData)
-=======
-	FontNormal, err = getFont(12, 68, fontData)
->>>>>>> 7cbeeca... add export as csv feature
 	if err != nil {
 		return err
 	}

@@ -74,11 +74,6 @@ func (a *AddressGeneratorHandler) Render(window *nucular.Window) {
 
 	window.Row(300).Dynamic(1)
 	if w := helper.NewWindow("Address Page Content", window, 0); w != nil {
-		w.Row(helper.ButtonHeight).Ratio(0.2, 0.2)
-		w.ComboSimple(a.netOptions, a.selectedNetIndex, 30)
-		w.Row(10).Dynamic(1)
-		w.Label("", "LC")
-
 		w.Row(10).Dynamic(3)
 		w.Label("Net Type:", "LC")
 		w.Label("Number to generate:", "LC")
@@ -175,14 +170,14 @@ func (a *AddressGeneratorHandler) doGenerate(window *helper.Window) (string, str
 	}
 
 	privWif := dcrutil.NewWIF(priv, netPrivKeyID, dcrec.STEcdsaSecp256k1)
+
 	a.privateKey = privWif.String()
 	a.address = addr.Address()
-	privWif, err := dcrutil.NewWIF(priv, &chainParam, dcrec.STEcdsaSecp256k1)
 	if err != nil {
 		return "", "", err
 	}
 
-	return addr.EncodeAddress(), privWif.String(), nil
+	return addr.String(), privWif.String(), nil
 }
 
 func (a *AddressGeneratorHandler) generateAddressAndPrivateKey(window *helper.Window) {
