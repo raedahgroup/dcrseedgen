@@ -24,24 +24,44 @@ var (
 	noPadding           = image.Point{0, 0}
 
 	logo *image.RGBA
+
+	ExportIcon *image.RGBA
 )
 
 const (
-	scaling      = 1.1
+	scaling      = 1.2
 	ButtonHeight = 40
 )
 
 func LoadLogo() error {
-	logoHandler, err := os.Open("assets/logo.png")
+	l, err := loadImage("assets/logo.png")
 	if err != nil {
 		return err
 	}
-	defer logoHandler.Close()
-
-	img, _ := png.Decode(logoHandler)
-	logo = image.NewRGBA(img.Bounds())
-	draw.Draw(logo, img.Bounds(), img, image.ZP, draw.Src)
+	logo = l
 	return nil
+}
+
+func LoadIcons() error {
+	l, err := loadImage("assets/export_icon.png")
+	if err != nil {
+		return err
+	}
+	ExportIcon = l
+	return nil
+}
+
+func loadImage(path string) (*image.RGBA, error) {
+	handler, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer handler.Close()
+
+	img, _ := png.Decode(handler)
+	dest := image.NewRGBA(img.Bounds())
+	draw.Draw(dest, img.Bounds(), img, image.ZP, draw.Src)
+	return dest, nil
 }
 
 func InitStyle(window nucular.MasterWindow) error {
@@ -57,7 +77,7 @@ func InitStyle(window nucular.MasterWindow) error {
 
 	// style buttons
 	style.Button.Rounding = 0
-	style.Button.TextHover = colorAccent
+	style.Button.TextHover = colorSecondary
 
 	// text inputs
 	style.Edit.Normal.Data.Color = whiteColor
@@ -67,6 +87,28 @@ func InitStyle(window nucular.MasterWindow) error {
 	style.Edit.TextNormal = colorAccent
 	style.Edit.TextHover = colorAccent
 	style.Edit.CursorHover = colorAccent
+
+	// combo
+	style.Combo.LabelActive = colorSecondary
+	style.Combo.LabelHover = colorSecondary
+	style.Combo.LabelNormal = colorSecondary
+	style.Combo.Active.Data.Color = whiteColor
+	style.Combo.Hover.Data.Color = whiteColor
+	style.Combo.Normal.Data.Color = whiteColor
+	style.Combo.Button.Normal.Data.Color = colorSecondary
+	style.Combo.Button.Hover.Data.Color = colorSecondary
+	style.Combo.Button.Active.Data.Color = colorSecondary
+	style.Combo.Button.Border = 1
+	style.Combo.Button.BorderColor = colorSecondary
+
+	// combo window
+	style.ComboWindow.Spacing = noPadding
+	style.ComboWindow.Padding = noPadding
+	style.ComboWindow.ScrollbarSize = noPadding
+
+	style.ComboWindow.Background = colorAccent
+	style.ComboWindow.Scaler.Data.Color = colorAccent
+	style.ComboWindow.FixedBackground.Data.Color = colorAccent
 
 	window.SetStyle(style)
 
@@ -118,6 +160,10 @@ func StyleClipboardInput(window *Window) {
 	style.Edit.Normal.Data.Color = colorPrimary
 	style.Edit.Hover.Data.Color = colorPrimary
 	style.Edit.Active.Data.Color = colorPrimary
+	style.Edit.TextActive = whiteColor
+	style.Edit.TextNormal = whiteColor
+	style.Edit.TextHover = whiteColor
+	style.Edit.CursorHover = whiteColor
 	window.Master().SetStyle(style)
 }
 
@@ -128,6 +174,9 @@ func ResetInputStyle(window *Window) {
 	style.Edit.Normal.Data.Color = whiteColor
 	style.Edit.Hover.Data.Color = whiteColor
 	style.Edit.Active.Data.Color = whiteColor
+	style.Edit.TextActive = colorSecondary
+	style.Edit.TextNormal = colorSecondary
+	style.Edit.TextHover = colorSecondary
 	window.Master().SetStyle(style)
 }
 
@@ -143,6 +192,7 @@ func StyleNavButton(window *nucular.Window) {
 func ResetButtonStyle(window *nucular.Window) {
 	style := window.Master().Style()
 	style.Button.Border = 1
-	style.Button.Normal.Data.Color = colorAccent
+	style.Button.Normal.Data.Color = colorSecondary
+	style.Button.Hover.Data.Color = whiteColor
 	window.Master().SetStyle(style)
 }

@@ -92,9 +92,12 @@ func (h *SeedGeneratorHandler) renderSeedPage(window *nucular.Window) {
 		helper.UseFont(w, helper.FontBold)
 		w.Label("Mnemonic Words:", "LC")
 
-		w.Row(187).Dynamic(1)
+		w.Row(9).Dynamic(1)
+		w.Label("", "LC")
+
+		w.Row(172).Dynamic(1)
 		if colWindow := w.NewWindow("Word Columns", 0); colWindow != nil {
-			colWindow.Row(166).Dynamic(noColumns)
+			colWindow.Row(162).Dynamic(noColumns)
 			helper.UseFont(colWindow, helper.FontBold)
 
 			currentItem := 0
@@ -108,13 +111,10 @@ func (h *SeedGeneratorHandler) renderSeedPage(window *nucular.Window) {
 			w.Row(30).Dynamic(1)
 			w.Label(fmt.Sprintf("error generating seed: %s", h.seedErr.Error()), "LC")
 		} else {
-			w.Row(1).Dynamic(1)
-			w.Label("", "LC")
-
 			w.Row(20).Dynamic(1)
 			helper.UseFont(w, helper.FontBold)
 
-			w.Label("Hex Seed", "LC")
+			w.Label("Hex Seed:", "LC")
 			w.Row(60).Dynamic(1)
 			helper.UseFont(w, helper.FontNormal)
 			w.LabelWrap(h.seed)
