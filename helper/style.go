@@ -25,26 +25,43 @@ var (
 
 	logo *image.RGBA
 
-	exportIcon *image.RGBA
+	ExportIcon *image.RGBA
 )
 
 const (
-	scaling      = 1.1
+	scaling      = 1.2
 	ButtonHeight = 40
 )
 
 func LoadLogo() error {
-	logoHandler, err := os.Open("assets/logo.png")
+	l, err := loadImage("assets/logo.png")
 	if err != nil {
 		return err
 	}
-	defer logoHandler.Close()
-
-	img, _ := png.Decode(logoHandler)
-	logo = image.NewRGBA(img.Bounds())
-	draw.Draw(logo, img.Bounds(), img, image.ZP, draw.Src)
-
+	logo = l
 	return nil
+}
+
+func LoadIcons() error {
+	l, err := loadImage("assets/export_icon.png")
+	if err != nil {
+		return err
+	}
+	ExportIcon = l
+	return nil
+}
+
+func loadImage(path string) (*image.RGBA, error) {
+	handler, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer handler.Close()
+
+	img, _ := png.Decode(handler)
+	dest := image.NewRGBA(img.Bounds())
+	draw.Draw(dest, img.Bounds(), img, image.ZP, draw.Src)
+	return dest, nil
 }
 
 func InitStyle(window nucular.MasterWindow) error {

@@ -42,6 +42,12 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// load icons
+	err = helper.LoadIcons()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	window := nucular.NewMasterWindow(nucular.WindowNoScrollbar|nucular.WindowContextualReplace, appName, app.render)
 	if err := helper.InitStyle(window); err != nil {
 		log.Fatal(err)

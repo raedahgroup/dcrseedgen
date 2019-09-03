@@ -100,7 +100,7 @@ func (a *AddressGeneratorHandler) Render(window *nucular.Window) {
 		helper.UseFont(w, helper.FontNormal)
 		helper.StyleClipboardInput(w)
 
-		w.Row(27).Ratio(0.39, 0.61)
+		w.Row(33).Ratio(0.39, 0.61)
 		for i := range a.inputPairs {
 			a.inputPairs[i].addressInput.Edit(w.Window)
 			a.inputPairs[i].privateKeyInput.Edit(w.Window)
@@ -113,12 +113,13 @@ func (a *AddressGeneratorHandler) Render(window *nucular.Window) {
 		window.Row(50).Dynamic(1)
 		if w := helper.NewWindow("Create csv button", window, 0); w != nil {
 			w.Row(25).Dynamic(10)
-			if w.ButtonText("") {
-				w.Master().PopupOpen("Export as csv", nucular.WindowTitle|nucular.WindowDynamic|nucular.WindowNoScrollbar, a.popupBounds, true, a.renderCSVPopup)
-			}
-
+			w.Image(helper.ExportIcon)
 			if w.Input().Mouse.HoveringRect(w.LastWidgetBounds) {
 				w.Tooltip("Export as csv")
+			}
+
+			if w.Input().Mouse.AnyClickInRect(w.LastWidgetBounds) {
+				w.Master().PopupOpen("Export as csv", nucular.WindowTitle|nucular.WindowDynamic|nucular.WindowNoScrollbar, a.popupBounds, true, a.renderCSVPopup)
 			}
 
 			w.End()
