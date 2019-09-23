@@ -1,32 +1,39 @@
 package main
 
 import (
-	"github.com/aarzilli/nucular"
+	"gioui.org/layout"
+	"gioui.org/widget"
+
+	"github.com/raedahgroup/dcrseedgen/handlers/seed"
 	"github.com/raedahgroup/dcrseedgen/handlers"
+	"github.com/raedahgroup/dcrseedgen/helper"
 )
 
-type Handler interface {
+type handler interface {
 	BeforeRender()
-	Render(*nucular.Window)
+	Render(*layout.Context, func())
 }
 
 type page struct {
-	name    string
-	label   string
-	handler Handler
+	name     string
+	navLabel string
+	button  *widget.Button
+	handler  handler
 }
 
-func getPages() []page {
+func getPages(theme *helper.Theme) []page {
 	return []page{
 		{
-			name:    "seed",
-			label:   "Generate Seed",
-			handler: &handlers.SeedGeneratorHandler{},
+			name:     "seedhandler",
+			navLabel: "Generate Seed",
+			button:   new(widget.Button),
+			handler:  seed.NewSeedHandler(theme),
 		},
 		{
-			name:    "address",
-			label:   "Get Address",
-			handler: &handlers.AddressGeneratorHandler{},
+			name:     "wallethandler",
+			navLabel: "Generate Address",
+			button:   new(widget.Button),
+			handler:  handlers.NewAddressHandler(theme),
 		},
 	}
 }

@@ -1,94 +1,181 @@
 package main
 
 import (
+	"context"
+	"image"
 	"log"
 
-	"github.com/aarzilli/nucular"
+	"gioui.org/layout"
 	"github.com/raedahgroup/dcrseedgen/helper"
+
+	"gioui.org/app"
+	"gioui.org/io/system"
+	"gioui.org/unit"
 )
 
 type App struct {
-	currentPage  string
-	pageChanged  bool
-	masterWindow nucular.MasterWindow
-	pages        map[string]page
+	window *app.Window
+	ctx    context.Context
+
+	pageChanged bool
+	currentPage string
+	pages       []page
+
+	theme *helper.Theme
 }
 
 const (
-	appName  = "DCR Seed Generator"
-	homePage = "seed"
-
-	navPaneWidth            = 220
-	contentPaneXOffset      = 25
-	contentPaneWidthPadding = 55
+	appName      = "DCR Seed Generator"
+	windowWidth  = 500
+	windowHeight = 350
 )
 
 func main() {
-	app := &App{
-		pageChanged: true,
-		currentPage: homePage,
+	a := &App{
+		theme: helper.NewTheme(),
 	}
+	a.setHandlers()
 
-	// register pages
-	pages := getPages()
-	app.pages = make(map[string]page, len(pages))
-	for _, page := range pages {
-		app.pages[page.name] = page
-	}
+	go func() {
+		a.window = app.NewWindow(
+			app.Size(
+				unit.Dp(windowWidth),
+				unit.Dp(windowHeight),
+			),
+			app.Title(appName),
+		)
 
-	// load logo once
-	err := helper.LoadLogo()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// load icons
-	err = helper.LoadIcons()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	window := nucular.NewMasterWindow(nucular.WindowNoScrollbar|nucular.WindowContextualReplace, appName, app.render)
-	if err := helper.InitStyle(window); err != nil {
-		log.Fatal(err)
-	}
-
-	app.masterWindow = window
-	window.Main()
-}
-
-func (app *App) changePage(page string) {
-	app.currentPage = page
-	app.pageChanged = true
-	app.masterWindow.Changed()
-}
-
-func (app *App) render(window *nucular.Window) {
-	currentPage := app.pages[app.currentPage]
-
-	if app.pageChanged {
-		currentPage.handler.BeforeRender()
-		app.pageChanged = false
-	}
-
-	helper.DrawPageHeader(window)
-	app.renderNavButtons(window)
-	currentPage.handler.Render(window)
-}
-
-func (app *App) renderNavButtons(window *nucular.Window) {
-	window.Row(helper.ButtonHeight + 10).Dynamic(1)
-	if group := window.GroupBegin("nav-window", 0); group != nil {
-		group.Row(helper.ButtonHeight).Ratio(0.18, 0.23)
-		helper.StyleNavButton(window)
-		if group.ButtonText("Generate Seed") && app.currentPage != "seed" {
-			app.changePage("seed")
+		if err := a.startRenderLoop(); err != nil {
+			log.Fatal(err)
 		}
+	}()
 
-		if group.ButtonText("Generate Address") && app.currentPage != "address" {
-			app.changePage("address")
-		}
-		helper.ResetButtonStyle(window)
-		group.GroupEnd()
+	app.Main()
+}
+
+func (a *App) setHandlers() {
+	pages := getPages(a.theme)
+	a.pages = make([]page, len(pages))
+
+	for index, page := range pages {
+		a.pages[index] = page
 	}
+
+	if len(a.pages) > 0 {
+		a.changePage(a.pages[0].name)
+	}
+}
+
+func (a *App) changePage(pageName string) {
+	if a.currentPage == pageName {
+		return
+	}
+
+	a.pageChanged = true
+	a.currentPage = pageName
+
+	if a.window != nil {
+		a.refreshWindow()
+	}
+}
+
+func (a *App) startRenderLoop() error {
+	ctx := &layout.Context{
+		Queue: a.window.Queue(),
+	}
+
+	for {
+		e := <-a.window.Events()
+		switch e := e.(type) {
+		case system.DestroyEvent:
+			return e.Err
+		case system.FrameEvent:
+			ctx.Reset(e.Config, e.Size)
+			a.drawWindowContents(ctx)
+			e.Frame(ctx.Ops)
+
+		}
+	}
+}
+
+func (a *App) drawWindowContents(ctx *layout.Context) {
+	stack := layout.Stack{}
+
+	navSection := stack.Rigid(ctx, func() {
+		a.drawNavSection(ctx)
+	})
+
+	contentSection := stack.Rigid(ctx, func() {
+		a.drawContentSection(ctx)
+	})
+
+	stack.Layout(ctx, navSection, contentSection)
+}
+
+func (a *App) drawNavSection(ctx *layout.Context) {
+	navAreaBounds := image.Point{
+		X: windowWidth * 2,
+		Y: 53,
+	}
+	helper.PaintArea(ctx, helper.GrayColor, navAreaBounds)
+	inset := layout.Inset{
+		Top:  unit.Sp(0),
+		Left: unit.Sp(0),
+	}
+
+	inset.Layout(ctx, func() {
+		flex := layout.Flex{
+			Axis: layout.Horizontal,
+		}
+		children := make([]layout.FlexChild, len(a.pages))
+		inset := layout.UniformInset(unit.Dp(0))
+		for index, page := range a.pages {
+			children[index] = flex.Rigid(ctx, func() {
+				inset.Layout(ctx, func() {
+					for page.button.Clicked(ctx) {
+						a.changePage(page.name)
+					}
+					btn := a.theme.Button(page.navLabel)
+					btn.Color = helper.DecredDarkBlueColor
+					if a.currentPage == page.name {
+						btn.Background = helper.WhiteColor
+					} else {
+						btn.Background = helper.GrayColor
+					}
+					btn.Layout(ctx, page.button)
+				})
+			})
+		}
+		flex.Layout(ctx, children...)
+	})
+}
+
+func (a *App) drawContentSection(ctx *layout.Context) {
+	var page page
+	for i := range a.pages {
+		if a.pages[i].name == a.currentPage {
+			page = a.pages[i]
+			break
+		}
+	}
+
+	if a.pageChanged {
+		page.handler.BeforeRender()
+		a.pageChanged = false
+	}
+	stack := layout.Stack{}
+	inset := layout.Inset{
+		Top:   unit.Dp(48),
+		Left:  unit.Dp(15),
+		Right: unit.Dp(15),
+	}
+
+	inset.Layout(ctx, func() {
+		page.handler.Render(ctx, a.refreshWindow)
+	})
+	stack.Layout(ctx)
+}
+
+func (a *App) refreshWindow() {
+	a.window.Invalidate()
 }
