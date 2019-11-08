@@ -111,7 +111,7 @@ func (c *Combo) drawItem(ctx *layout.Context, item *comboItem) {
 	st := layout.Stack{Alignment: layout.Center}
 
 	font := text.Font{
-		Size: unit.Px(13),
+		Size: unit.Dp(c.theme.TextSize.V),
 	}
 
 	//hmin := ctx.Constraints.Width.Max

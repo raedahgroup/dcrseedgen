@@ -29,7 +29,7 @@ func LayoutButton(button *widget.Button, txt string, theme *helper.Theme, gtx *l
 	hmin := gtx.Constraints.Width.Min
 
 	font := text.Font{
-		Size: unit.Px(12),
+		Size: unit.Dp(theme.TextSize.V),
 	}
 
 	lbl := st.Rigid(gtx, func() {

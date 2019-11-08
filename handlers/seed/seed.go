@@ -6,7 +6,6 @@ import (
 	"github.com/raedahgroup/dcrseedgen/widgets"
 
 	"strconv"
-	//"github.com/raedahgroup/dcrseedgen/widgets"
 )
 
 func (h *SeedHandler) drawSeedSubPage(ctx *layout.Context, refreshWindowFunc func()) {

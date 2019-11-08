@@ -201,9 +201,7 @@ func (h *AddressHandler) renderFormSection(ctx *layout.Context) {
 		for h.generateButton.Clicked(ctx) {
 			h.doGenerate(ctx)
 		}
-
-		btn := h.theme.Button("Generate")
-		btn.Layout(ctx, h.generateButton)
+		widgets.LayoutButton(h.generateButton, "Generate", h.theme, ctx)
 	})
 
 	flex.Layout(ctx, networkLabelSection, networkComboSection, numberOfItemsLabel, numberOfItemsSection, spacer, generateButtonSection)
