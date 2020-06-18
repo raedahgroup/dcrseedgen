@@ -1,181 +1,92 @@
 package main
 
 import (
-	"context"
 	"image"
 	"log"
+	"os"
+	"strings"
 
-	"gioui.org/layout"
+	app "gioui.org/app"
+	"gioui.org/font"
+	"gioui.org/font/gofont"
+	"gioui.org/font/opentype"
+	"gioui.org/text"
+	"github.com/markbates/pkger"
 	"github.com/raedahgroup/dcrseedgen/helper"
-
-	"gioui.org/app"
-	"gioui.org/io/system"
-	"gioui.org/unit"
-)
-
-type App struct {
-	window *app.Window
-	ctx    context.Context
-
-	pageChanged bool
-	currentPage string
-	pages       []page
-
-	theme *helper.Theme
-}
-
-const (
-	appName      = "DCR Seed Generator"
-	windowWidth  = 500
-	windowHeight = 350
+	"github.com/raedahgroup/dcrseedgen/ui"
 )
 
 func main() {
-	a := &App{
-		theme: helper.NewTheme(),
+	// make data directory if not exists
+	err := helper.CreateDataDirectory()
+	if err != nil {
+		log.Fatalf("error creating data directory: %s", err.Error())
 	}
-	a.setHandlers()
 
-	go func() {
-		a.window = app.NewWindow(
-			app.Size(
-				unit.Dp(windowWidth),
-				unit.Dp(windowHeight),
-			),
-			app.Title(appName),
-		)
+	// load and register font
+	err = loadFont()
+	if err != nil {
+		log.Fatalf("error loading font: %s", err.Error())
+	}
 
-		if err := a.startRenderLoop(); err != nil {
-			log.Fatal(err)
-		}
-	}()
+	// load decred icons
+	decredIcons, err := loadDecredIcons()
+	if err != nil {
+		log.Fatalf("error loading decred icons: %s", err.Error())
+	}
+
+	win := ui.NewWindow(decredIcons)
+	go win.Loop()
 
 	app.Main()
 }
 
-func (a *App) setHandlers() {
-	pages := getPages(a.theme)
-	a.pages = make([]page, len(pages))
-
-	for index, page := range pages {
-		a.pages[index] = page
-	}
-
-	if len(a.pages) > 0 {
-		a.changePage(a.pages[0].name)
-	}
-}
-
-func (a *App) changePage(pageName string) {
-	if a.currentPage == pageName {
-		return
-	}
-
-	a.pageChanged = true
-	a.currentPage = pageName
-
-	if a.window != nil {
-		a.refreshWindow()
-	}
-}
-
-func (a *App) startRenderLoop() error {
-	ctx := &layout.Context{
-		Queue: a.window.Queue(),
-	}
-
-	for {
-		e := <-a.window.Events()
-		switch e := e.(type) {
-		case system.DestroyEvent:
-			return e.Err
-		case system.FrameEvent:
-			ctx.Reset(e.Config, e.Size)
-			a.drawWindowContents(ctx)
-			e.Frame(ctx.Ops)
-
+func loadFont() error {
+	// load font
+	sans, err := pkger.Open("/assets/fonts/source_sans_pro_regular.otf")
+	if err != nil {
+		return err
+	} else {
+		stat, err := sans.Stat()
+		if err != nil {
+			return err
 		}
-	}
-}
-
-func (a *App) drawWindowContents(ctx *layout.Context) {
-	stack := layout.Stack{}
-
-	navSection := stack.Rigid(ctx, func() {
-		a.drawNavSection(ctx)
-	})
-
-	contentSection := stack.Rigid(ctx, func() {
-		a.drawContentSection(ctx)
-	})
-
-	stack.Layout(ctx, navSection, contentSection)
-}
-
-func (a *App) drawNavSection(ctx *layout.Context) {
-	navAreaBounds := image.Point{
-		X: windowWidth * 2,
-		Y: 53,
-	}
-	helper.PaintArea(ctx, helper.GrayColor, navAreaBounds)
-	inset := layout.Inset{
-		Top:  unit.Sp(0),
-		Left: unit.Sp(0),
-	}
-
-	inset.Layout(ctx, func() {
-		flex := layout.Flex{
-			Axis: layout.Horizontal,
+		bytes := make([]byte, stat.Size())
+		sans.Read(bytes)
+		fnt, err := opentype.Parse(bytes)
+		if err != nil {
+			return err
 		}
-		children := make([]layout.FlexChild, len(a.pages))
-		inset := layout.UniformInset(unit.Dp(0))
-		for index, page := range a.pages {
-			children[index] = flex.Rigid(ctx, func() {
-				inset.Layout(ctx, func() {
-					for page.button.Clicked(ctx) {
-						a.changePage(page.name)
-					}
-					btn := a.theme.Button(page.navLabel)
-					btn.Color = helper.DecredDarkBlueColor
-					if a.currentPage == page.name {
-						btn.Background = helper.WhiteColor
-					} else {
-						btn.Background = helper.GrayColor
-					}
-					btn.Layout(ctx, page.button)
-				})
-			})
-		}
-		flex.Layout(ctx, children...)
-	})
-}
-
-func (a *App) drawContentSection(ctx *layout.Context) {
-	var page page
-	for i := range a.pages {
-		if a.pages[i].name == a.currentPage {
-			page = a.pages[i]
-			break
+		if fnt != nil {
+			font.Register(text.Font{}, fnt)
+		} else {
+			log.Println("Failed to load font Source Sans Pro. Using gofont")
+			gofont.Register()
 		}
 	}
 
-	if a.pageChanged {
-		page.handler.BeforeRender()
-		a.pageChanged = false
-	}
-	stack := layout.Stack{}
-	inset := layout.Inset{
-		Top:   unit.Dp(48),
-		Left:  unit.Dp(15),
-		Right: unit.Dp(15),
-	}
-
-	inset.Layout(ctx, func() {
-		page.handler.Render(ctx, a.refreshWindow)
-	})
-	stack.Layout(ctx)
+	return nil
 }
 
-func (a *App) refreshWindow() {
-	a.window.Invalidate()
+func loadDecredIcons() (map[string]image.Image, error) {
+	decredIcons := make(map[string]image.Image)
+	err := pkger.Walk("/assets/decredicons", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			panic(err)
+		}
+		if info.IsDir() || !strings.HasSuffix(path, ".png") {
+			return nil
+		}
+
+		f, _ := pkger.Open(path)
+		img, _, err := image.Decode(f)
+		if err != nil {
+			return err
+		}
+		split := strings.Split(info.Name(), ".")
+		decredIcons[split[0]] = img
+		return nil
+	})
+
+	return decredIcons, err
 }
