@@ -1,7 +1,6 @@
 package pages
 
 import (
-	"errors"
 	"strconv"
 	"strings"
 	"time"
@@ -9,6 +8,7 @@ import (
 	"gioui.org/layout"
 	"gioui.org/unit"
 	"gioui.org/widget"
+	"gioui.org/widget/material"
 
 	"github.com/atotto/clipboard"
 	"github.com/raedahgroup/dcrseedgen/helper"
@@ -36,26 +36,27 @@ type (
 		hasCopiedHexSeed bool
 
 		list                        *layout.List
-		seedWordsHeaderLabel        theme.Label
-		seedHexHeaderLabel          theme.Label
-		seedVerificationHeaderLabel theme.Label
+		seedWordsHeaderLabel        material.LabelStyle
+		seedHexHeaderLabel          material.LabelStyle
+		seedVerificationHeaderLabel material.LabelStyle
+		copiedLabel                 material.LabelStyle
 
 		isShowingVerificationPage bool
 
 		verifyButtonMaterial theme.Button
-		verifyButtonWidget   *widget.Button
+		verifyButtonWidget   *widget.Clickable
 
 		backVerificationButtonMaterial theme.Button
-		backVerificationButtonWidget   *widget.Button
+		backVerificationButtonWidget   *widget.Clickable
 
 		doVerifyButtonMaterial theme.Button
-		doVerifyButtonWidget   *widget.Button
+		doVerifyButtonWidget   *widget.Clickable
 
 		generateButtonMaterial theme.Button
-		generateButtonWidget   *widget.Button
+		generateButtonWidget   *widget.Clickable
 
 		copyIconMaterial theme.IconButton
-		copyIconWidget   *widget.Button
+		copyIconWidget   *widget.Clickable
 
 		verifyMessage helper.Message
 	}
@@ -71,39 +72,43 @@ const (
 
 func NewSeedPage(th *theme.Theme) *SeedPage {
 	page := &SeedPage{
-		theme: th,
+		theme:         th,
+		verifyMessage: helper.Message{},
 	}
 
 	page.list = &layout.List{
 		Axis: layout.Vertical,
 	}
 
-	page.verifyMessage = helper.Message{}
-
-	page.err = errors.New("dddd")
 	page.hasCopiedHexSeed = false
 	page.isShowingVerificationPage = false
+
 	page.seedWordsHeaderLabel = th.H5("Seed Words")
 	page.seedHexHeaderLabel = th.H5("Seed Hex")
-	page.verifyButtonMaterial = th.Button("Verify")
-	page.generateButtonMaterial = th.Button("Regenerate")
+	page.copiedLabel = th.Caption("copied")
 	page.seedVerificationHeaderLabel = th.H5("Verify Seed Words")
-	page.verifyButtonWidget = new(widget.Button)
-	page.generateButtonWidget = new(widget.Button)
-	page.copyIconWidget = new(widget.Button)
-	page.copyIconMaterial = th.IconButton(theme.MustIcon(theme.NewIcon(icons.ContentContentCopy)))
+
+	page.verifyButtonWidget = new(widget.Clickable)
+	page.verifyButtonMaterial = th.Button("Verify", page.verifyButtonWidget)
+
+	page.generateButtonWidget = new(widget.Clickable)
+	page.generateButtonMaterial = th.Button("Regenerate", page.generateButtonWidget)
+
+	page.copyIconWidget = new(widget.Clickable)
+	page.copyIconMaterial = th.IconButton(theme.MustIcon(theme.NewIcon(icons.ContentContentCopy)), page.copyIconWidget)
 	page.copyIconMaterial.Background = th.Color.Background
 	page.copyIconMaterial.Color = th.Color.Text
 	page.copyIconMaterial.Size = unit.Dp(25)
 	page.copyIconMaterial.Padding = unit.Dp(5)
 
-	page.doVerifyButtonMaterial = th.Button("Verify")
-	page.doVerifyButtonWidget = new(widget.Button)
+	page.doVerifyButtonWidget = new(widget.Clickable)
+	page.doVerifyButtonMaterial = th.Button("Verify", page.doVerifyButtonWidget)
 
-	page.backVerificationButtonMaterial = th.Button("Back")
-	page.backVerificationButtonWidget = new(widget.Button)
+	page.backVerificationButtonWidget = new(widget.Clickable)
+	page.backVerificationButtonMaterial = th.DangerButton("Back", page.backVerificationButtonWidget)
 
-	page.generate()
+	page.copiedLabel.Color = th.Color.Success
+
 	return page
 }
 
@@ -141,195 +146,202 @@ func (page *SeedPage) BeforeRender() {
 	page.resetVerificationPage()
 }
 
-func (page *SeedPage) handleEvents(gtx *layout.Context) {
+func (page *SeedPage) handleEvents(gtx layout.Context) {
 	if page.hasCopiedHexSeed {
 		time.AfterFunc(3*time.Second, func() {
 			page.hasCopiedHexSeed = false
 		})
 	}
 
-	for page.generateButtonWidget.Clicked(gtx) {
+	for page.generateButtonWidget.Clicked() {
 		page.generate()
 	}
 
-	for page.copyIconWidget.Clicked(gtx) {
+	for page.copyIconWidget.Clicked() {
 		clipboard.WriteAll(page.seed.seedStr)
 		page.hasCopiedHexSeed = true
 	}
 
-	for page.verifyButtonWidget.Clicked(gtx) {
+	for page.verifyButtonWidget.Clicked() {
 		page.isShowingVerificationPage = true
 	}
 }
 
-func (page *SeedPage) Render(gtx *layout.Context) {
+func (page *SeedPage) Render(gtx layout.Context) layout.Dimensions {
 	page.handleEvents(gtx)
 
 	if page.isShowingVerificationPage {
-		page.renderSeedVerificationPage(gtx)
-	} else {
-		page.renderSeedGenerationPage(gtx)
+		return page.renderSeedVerificationPage(gtx)
 	}
+	return page.renderSeedGenerationPage(gtx)
 }
 
-func (page *SeedPage) renderSeedGenerationPage(gtx *layout.Context) {
+func (page *SeedPage) renderSeedGenerationPage(gtx layout.Context) layout.Dimensions {
 	if page.err != nil {
-		page.theme.ErrorAlert(gtx, page.err.Error())
-		return
+		gtx.Constraints.Min.X = gtx.Constraints.Max.X
+		return page.theme.ErrorAlert(gtx, page.err.Error())
 	}
 
-	w := []func(){
-		func() {
-			page.seedWordsHeaderLabel.Layout(gtx)
+	w := []layout.Widget{
+		func(gtx layout.Context) layout.Dimensions {
+			return page.seedWordsHeaderLabel.Layout(gtx)
 		},
-		func() {
-			layout.Inset{Top: unit.Dp(10)}.Layout(gtx, func() {
-				page.renderWordColumns(gtx)
-			})
+		func(gtx layout.Context) layout.Dimensions {
+			return page.renderWordColumns(gtx)
 		},
-		func() {
-			layout.Inset{Top: unit.Dp(30)}.Layout(gtx, func() {
-				page.seedHexHeaderLabel.Layout(gtx)
-			})
+		func(gtx layout.Context) layout.Dimensions {
+			return page.seedHexHeaderLabel.Layout(gtx)
 		},
-		func() {
-			layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func() {
-				layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
-					layout.Rigid(func() {
-						page.theme.Body1(page.seed.seedStr).Layout(gtx)
-					}),
-					layout.Rigid(func() {
-						layout.Inset{Top: unit.Dp(-3), Left: unit.Dp(3)}.Layout(gtx, func() {
-							page.copyIconMaterial.Layout(gtx, page.copyIconWidget)
-						})
-						if page.hasCopiedHexSeed {
-							layout.Inset{Top: unit.Dp(25)}.Layout(gtx, func() {
-								page.theme.Caption("copied").Layout(gtx)
+		func(gtx layout.Context) layout.Dimensions {
+			return layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
+				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					return page.theme.Body1(page.seed.seedStr).Layout(gtx)
+				}),
+				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							return layout.Inset{Top: unit.Dp(0), Left: unit.Dp(7)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+								return page.copyIconMaterial.Layout(gtx)
 							})
-						}
-					}),
-				)
-			})
+						}),
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							if page.hasCopiedHexSeed {
+								return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+									return page.copiedLabel.Layout(gtx)
+								})
+							}
+							return layout.Dimensions{}
+						}),
+					)
+				}),
+			)
 		},
-		func() {
+		func(gtx layout.Context) layout.Dimensions {
 			insetTop := float32(35)
 			if page.hasCopiedHexSeed {
-				insetTop = 15
+				insetTop = 20
 			}
 
-			layout.Inset{Top: unit.Dp(insetTop)}.Layout(gtx, func() {
-				layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceBetween}.Layout(gtx,
-					layout.Rigid(func() {
-						page.generateButtonMaterial.Layout(gtx, page.generateButtonWidget)
+			return layout.Inset{Top: unit.Dp(insetTop)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceBetween}.Layout(gtx,
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						return page.generateButtonMaterial.Layout(gtx)
 					}),
-					layout.Rigid(func() {
-						page.verifyButtonMaterial.Layout(gtx, page.verifyButtonWidget)
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						return page.verifyButtonMaterial.Layout(gtx)
 					}),
 				)
 			})
 		},
 	}
 
-	page.list.Layout(gtx, len(w), func(i int) {
-		layout.UniformInset(unit.Dp(0)).Layout(gtx, w[i])
+	return page.list.Layout(gtx, len(w), func(gtx layout.Context, i int) layout.Dimensions {
+		return layout.UniformInset(unit.Dp(10)).Layout(gtx, w[i])
 	})
 }
 
-func (page *SeedPage) renderWordColumns(gtx *layout.Context) {
-	currentItem := 1
+func (page *SeedPage) renderWordColumns(gtx layout.Context) layout.Dimensions {
+	colWidth := gtx.Constraints.Max.X / len(page.seed.columns)
 
-	(&layout.List{Axis: layout.Horizontal}).Layout(gtx, len(page.seed.columns), func(i int) {
-		layout.Inset{
-			Right: unit.Dp(30),
-		}.Layout(gtx, func() {
-			(&layout.List{Axis: layout.Vertical}).Layout(gtx, len(page.seed.columns[i].words), func(j int) {
-				layout.Inset{
-					Bottom: unit.Dp(10),
-				}.Layout(gtx, func() {
-					page.theme.Body1(strconv.Itoa(currentItem) + ". " + page.seed.columns[i].words[j]).Layout(gtx)
-				})
-				currentItem++
+	currentItem := 1
+	columnList := layout.List{Axis: layout.Horizontal}
+	return columnList.Layout(gtx, len(page.seed.columns), func(gtx layout.Context, i int) layout.Dimensions {
+		wordList := layout.List{Axis: layout.Vertical}
+		return wordList.Layout(gtx, len(page.seed.columns[i].words), func(gtx layout.Context, j int) layout.Dimensions {
+			w := layout.Inset{
+				Bottom: unit.Dp(10),
+			}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				gtx.Constraints.Min.X = colWidth
+				return page.theme.Body1(strconv.Itoa(currentItem) + ". " + page.seed.columns[i].words[j]).Layout(gtx)
 			})
+
+			currentItem++
+			return w
 		})
 	})
 }
 
-func (page *SeedPage) renderSeedVerificationPage(gtx *layout.Context) {
-	page.handleVerificationEvents(gtx)
+func (page *SeedPage) renderSeedVerificationPage(gtx layout.Context) layout.Dimensions {
+	page.handleVerificationEvents()
 
-	w := []func(){
-		func() {
-			page.seedVerificationHeaderLabel.Layout(gtx)
+	w := []layout.Widget{
+		func(gtx layout.Context) layout.Dimensions {
+			return page.seedVerificationHeaderLabel.Layout(gtx)
 		},
-		func() {
+		func(gtx layout.Context) layout.Dimensions {
 			if page.verifyMessage.Message != "" {
 				if page.verifyMessage.Variant == "success" {
-					page.theme.SuccessAlert(gtx, page.verifyMessage.Message)
+					return page.theme.SuccessAlert(gtx, page.verifyMessage.Message)
 				} else {
-					page.theme.ErrorAlert(gtx, page.verifyMessage.Message)
+					return page.theme.ErrorAlert(gtx, page.verifyMessage.Message)
 				}
 			}
+
+			return layout.Dimensions{}
 		},
-		func() {
-			layout.Inset{Top: unit.Dp(10)}.Layout(gtx, func() {
-				page.renderInputColumns(gtx)
+		func(gtx layout.Context) layout.Dimensions {
+			return layout.Inset{Top: unit.Dp(10)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				return page.renderInputColumns(gtx)
 			})
 		},
-		func() {
-			layout.Inset{Top: unit.Dp(30)}.Layout(gtx, func() {
-				layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceBetween}.Layout(gtx,
-					layout.Rigid(func() {
-						page.backVerificationButtonMaterial.Layout(gtx, page.backVerificationButtonWidget)
+		func(gtx layout.Context) layout.Dimensions {
+			return layout.Inset{Top: unit.Dp(30)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceBetween}.Layout(gtx,
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						return page.backVerificationButtonMaterial.Layout(gtx)
 					}),
-					layout.Rigid(func() {
-						page.doVerifyButtonMaterial.Layout(gtx, page.doVerifyButtonWidget)
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						return page.doVerifyButtonMaterial.Layout(gtx)
 					}),
 				)
 			})
 		},
 	}
 
-	page.list.Layout(gtx, len(w), func(i int) {
-		layout.UniformInset(unit.Dp(0)).Layout(gtx, w[i])
+	return page.list.Layout(gtx, len(w), func(gtx layout.Context, i int) layout.Dimensions {
+		return layout.UniformInset(unit.Dp(10)).Layout(gtx, w[i])
 	})
 }
 
-func (page *SeedPage) handleVerificationEvents(gtx *layout.Context) {
-	for page.backVerificationButtonWidget.Clicked(gtx) {
+func (page *SeedPage) handleVerificationEvents() {
+	for page.backVerificationButtonWidget.Clicked() {
 		page.isShowingVerificationPage = false
 		page.resetVerificationPage()
 	}
 
-	for page.doVerifyButtonWidget.Clicked(gtx) {
+	for page.doVerifyButtonWidget.Clicked() {
 		page.doVerification()
 	}
 }
 
-func (page *SeedPage) renderInputColumns(gtx *layout.Context) {
+func (page *SeedPage) renderInputColumns(gtx layout.Context) layout.Dimensions {
 	currentItem := 1
-	maxWidth := gtx.Constraints.Width.Max
+	maxWidth := gtx.Constraints.Max.X
 
-	(&layout.List{Axis: layout.Horizontal}).Layout(gtx, len(page.seed.columns), func(i int) {
-		layout.Inset{
+	return (&layout.List{Axis: layout.Horizontal}).Layout(gtx, len(page.seed.columns), func(gtx layout.Context, i int) layout.Dimensions {
+		return layout.Inset{
 			Right: unit.Dp(30),
-		}.Layout(gtx, func() {
-			(&layout.List{Axis: layout.Vertical}).Layout(gtx, len(page.seed.columns[i].editors), func(j int) {
-				layout.Inset{
+		}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			return (&layout.List{Axis: layout.Vertical}).Layout(gtx, len(page.seed.columns[i].editors), func(gtx layout.Context, j int) layout.Dimensions {
+				dims := layout.Inset{
 					Bottom: unit.Dp(10),
-				}.Layout(gtx, func() {
-					gtx.Constraints.Width.Max = maxWidth / (numberOfColumns + 1)
-					layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
-						layout.Rigid(func() {
-							page.theme.Body1(strconv.Itoa(currentItem)).Layout(gtx)
+				}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					gtx.Constraints.Max.X = maxWidth / (numberOfColumns + 1)
+					gtx.Constraints.Min.X = gtx.Constraints.Max.X
+					return layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							return page.theme.Body1(strconv.Itoa(currentItem)).Layout(gtx)
 						}),
-						layout.Rigid(func() {
-							ed := page.theme.Editor("")
-							ed.IsTitleLabel = false
-							ed.Layout(gtx, page.seed.columns[i].editors[j])
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							gtx.Constraints.Min.X = gtx.Constraints.Max.X
+							return layout.Inset{Left: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+								return page.theme.Editor("", page.seed.columns[i].editors[j]).Layout(gtx)
+							})
 						}),
 					)
 				})
 				currentItem++
+				return dims
 			})
 		})
 	})

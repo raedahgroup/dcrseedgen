@@ -33,7 +33,7 @@ func NewIcon(data []byte) (*Icon, error) {
 	return &Icon{src: data, Color: rgb(0x000000)}, nil
 }
 
-func (ic *Icon) Layout(gtx *layout.Context, sz unit.Value) {
+func (ic *Icon) Layout(gtx layout.Context, sz unit.Value) {
 	ico := ic.image(gtx.Px(sz))
 	ico.Add(gtx.Ops)
 	paint.PaintOp{

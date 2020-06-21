@@ -7,10 +7,9 @@ import (
 	"strings"
 
 	app "gioui.org/app"
-	"gioui.org/font"
-	"gioui.org/font/gofont"
 	"gioui.org/font/opentype"
 	"gioui.org/text"
+
 	"github.com/markbates/pkger"
 	"github.com/raedahgroup/dcrseedgen/helper"
 	"github.com/raedahgroup/dcrseedgen/ui"
@@ -23,8 +22,8 @@ func main() {
 		log.Fatalf("error creating data directory: %s", err.Error())
 	}
 
-	// load and register font
-	err = loadFont()
+	// load font
+	col, err := loadFont()
 	if err != nil {
 		log.Fatalf("error loading font: %s", err.Error())
 	}
@@ -35,37 +34,33 @@ func main() {
 		log.Fatalf("error loading decred icons: %s", err.Error())
 	}
 
-	win := ui.NewWindow(decredIcons)
+	win := ui.NewWindow(decredIcons, col)
 	go win.Loop()
 
 	app.Main()
 }
 
-func loadFont() error {
-	// load font
+func loadFont() (*text.Collection, error) {
 	sans, err := pkger.Open("/assets/fonts/source_sans_pro_regular.otf")
 	if err != nil {
-		return err
-	} else {
-		stat, err := sans.Stat()
-		if err != nil {
-			return err
-		}
-		bytes := make([]byte, stat.Size())
-		sans.Read(bytes)
-		fnt, err := opentype.Parse(bytes)
-		if err != nil {
-			return err
-		}
-		if fnt != nil {
-			font.Register(text.Font{}, fnt)
-		} else {
-			log.Println("Failed to load font Source Sans Pro. Using gofont")
-			gofont.Register()
-		}
+		return nil, err
 	}
 
-	return nil
+	stat, err := sans.Stat()
+	if err != nil {
+		return nil, err
+	}
+	bytes := make([]byte, stat.Size())
+	sans.Read(bytes)
+	fnt, err := opentype.Parse(bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	col := new(text.Collection)
+	col.Register(text.Font{}, fnt)
+
+	return col, nil
 }
 
 func loadDecredIcons() (map[string]image.Image, error) {

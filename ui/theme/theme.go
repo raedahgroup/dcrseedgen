@@ -3,14 +3,15 @@ package theme
 import (
 	"image"
 	"image/color"
+	"math"
 
 	"gioui.org/f32"
-	"gioui.org/font"
 	"gioui.org/layout"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/text"
 	"gioui.org/unit"
+	"gioui.org/widget/material"
 
 	"golang.org/x/exp/shiny/materialdesign/icons"
 )
@@ -30,6 +31,7 @@ var (
 )
 
 type Theme struct {
+	*material.Theme
 	Shaper text.Shaper
 	Color  struct {
 		Primary    color.RGBA
@@ -50,16 +52,16 @@ type Theme struct {
 	radioUncheckedIcon *Icon
 }
 
-func New() *Theme {
+func New(col *text.Collection) *Theme {
 	t := &Theme{
-		Shaper: font.Default(),
+		Theme: material.NewTheme(col),
 	}
 	t.Color.Primary = keyblue
 	t.Color.Text = darkblue
 	t.Color.Hint = rgb(0xbbbbbb)
 	t.Color.InvText = rgb(0xffffff)
 	t.Color.Overlay = rgb(0x000000)
-	t.Color.Background = argb(0x22444444)
+	t.Color.Background = argb(0x33444444)
 	t.Color.Success = green
 	t.Color.Danger = rgb(0xff0000)
 	t.Color.Gray = rgb(0x808080)
@@ -73,38 +75,38 @@ func New() *Theme {
 	return t
 }
 
-func (t *Theme) alert(gtx *layout.Context, txt string, bgColor color.RGBA) {
+func (t *Theme) alert(gtx layout.Context, txt string, bgColor color.RGBA) layout.Dimensions {
 	bgColor.A = 200
 
-	layout.Stack{}.Layout(gtx,
-		layout.Expanded(func() {
+	return layout.Stack{}.Layout(gtx,
+		layout.Expanded(func(gtx layout.Context) layout.Dimensions {
 			rr := float32(gtx.Px(unit.Dp(2)))
 			clip.Rect{
 				Rect: f32.Rectangle{Max: f32.Point{
-					X: float32(gtx.Constraints.Width.Min),
-					Y: float32(gtx.Constraints.Height.Min),
+					X: float32(gtx.Constraints.Min.X),
+					Y: float32(gtx.Constraints.Min.Y),
 				}},
 				NE: rr, NW: rr, SE: rr, SW: rr,
 			}.Op(gtx.Ops).Add(gtx.Ops)
-			Fill(gtx, bgColor)
+			return Fill(gtx, bgColor)
 		}),
-		layout.Stacked(func() {
-			gtx.Constraints.Width.Min = gtx.Constraints.Width.Max
-			layout.UniformInset(unit.Dp(8)).Layout(gtx, func() {
+		layout.Stacked(func(gtx layout.Context) layout.Dimensions {
+			gtx.Constraints.Min.X = gtx.Constraints.Max.Y
+			return layout.UniformInset(unit.Dp(8)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				lbl := t.Body2(txt)
 				lbl.Color = t.Color.Surface
-				lbl.Layout(gtx)
+				return lbl.Layout(gtx)
 			})
 		}),
 	)
 }
 
-func (t *Theme) ErrorAlert(gtx *layout.Context, txt string) {
-	t.alert(gtx, txt, t.Color.Danger)
+func (t *Theme) ErrorAlert(gtx layout.Context, txt string) layout.Dimensions {
+	return t.alert(gtx, txt, t.Color.Danger)
 }
 
-func (t *Theme) SuccessAlert(gtx *layout.Context, txt string) {
-	t.alert(gtx, txt, t.Color.Success)
+func (t *Theme) SuccessAlert(gtx layout.Context, txt string) layout.Dimensions {
+	return t.alert(gtx, txt, t.Color.Success)
 }
 
 func rgb(c uint32) color.RGBA {
@@ -115,29 +117,46 @@ func argb(c uint32) color.RGBA {
 	return color.RGBA{A: uint8(c >> 24), R: uint8(c >> 16), G: uint8(c >> 8), B: uint8(c)}
 }
 
-func ToMax(gtx *layout.Context) {
-	gtx.Constraints.Width.Min = gtx.Constraints.Width.Max
-	gtx.Constraints.Height.Min = gtx.Constraints.Height.Max
+func ToMax(gtx layout.Context) {
+	gtx.Constraints.Min = gtx.Constraints.Max
 }
 
-func Fill(gtx *layout.Context, col color.RGBA) {
-	cs := gtx.Constraints
-	fill(gtx, cs.Width.Min, cs.Height.Min, col)
+func Fill(gtx layout.Context, col color.RGBA) layout.Dimensions {
+	cs := gtx.Constraints.Min
+	return fill(gtx, cs.X, cs.Y, col)
 }
 
-func FillMax(gtx *layout.Context, col color.RGBA) {
-	cs := gtx.Constraints
-	fill(gtx, cs.Width.Max, cs.Height.Max, col)
+func FillMax(gtx layout.Context, col color.RGBA) layout.Dimensions {
+	cs := gtx.Constraints.Max
+	return fill(gtx, cs.X, cs.Y, col)
 }
 
-func fill(gtx *layout.Context, width, height int, col color.RGBA) {
+func fill(gtx layout.Context, width, height int, col color.RGBA) layout.Dimensions {
 	d := image.Point{X: width, Y: height}
 	dr := f32.Rectangle{
 		Max: f32.Point{X: float32(d.X), Y: float32(d.Y)},
 	}
 	paint.ColorOp{Color: col}.Add(gtx.Ops)
 	paint.PaintOp{Rect: dr}.Add(gtx.Ops)
-	gtx.Dimensions = layout.Dimensions{Size: d}
+	return layout.Dimensions{Size: d}
+}
+
+func Bounds(gtx layout.Context) f32.Rectangle {
+	cs := gtx.Constraints
+	d := cs.Min
+	return f32.Rectangle{
+		Max: f32.Point{X: float32(d.X), Y: float32(d.Y)},
+	}
+}
+
+func dynamicColor(i int) color.RGBA {
+	sn, cs := math.Sincos(float64(i) * math.Phi)
+	return color.RGBA{
+		R: 0xA0 + byte(0x30*sn),
+		G: 0xA0 + byte(0x30*cs),
+		B: 0xD0,
+		A: 0xFF,
+	}
 }
 
 func MustIcon(ic *Icon, err error) *Icon {

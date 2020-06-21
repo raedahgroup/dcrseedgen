@@ -6,6 +6,8 @@ import (
 	"gioui.org/app"
 	"gioui.org/io/system"
 	"gioui.org/layout"
+	"gioui.org/op"
+	"gioui.org/text"
 	"gioui.org/unit"
 
 	"github.com/raedahgroup/dcrseedgen/ui/pages"
@@ -14,13 +16,13 @@ import (
 
 const (
 	appName      = "Dcrseedgen"
-	windowHeight = 500
-	windowWidth  = 800
+	windowHeight = 600
+	windowWidth  = 850
 )
 
 type Page interface {
 	BeforeRender()
-	Render(*layout.Context)
+	Render(layout.Context) layout.Dimensions
 }
 
 type Window struct {
@@ -32,64 +34,64 @@ type Window struct {
 	navTabs         *theme.Tabs
 }
 
-func NewWindow(decredIcons map[string]image.Image) *Window {
+func NewWindow(decredIcons map[string]image.Image, col *text.Collection) *Window {
 	win := new(Window)
 	win.currentPage = pages.SeedPageID
 	win.isRenderingPage = false
 	win.window = app.NewWindow(
+		app.Size(unit.Dp(windowWidth), unit.Dp(windowHeight)),
 		app.Title(appName),
 	)
-	win.theme = theme.New()
+	win.theme = theme.New(col)
 	win.registerPages(decredIcons)
 
 	return win
 }
 
 func (win *Window) registerPages(decredIcons map[string]image.Image) {
-	navTabs := theme.NewTabs()
-	navTabs.SetTabs([]theme.TabItem{
-		{
-			Label: win.theme.Body1("Generate Seed"),
-			Icon:  decredIcons["receive"],
-		},
-		{
-			Label: win.theme.Body1("Generate Address"),
-			Icon:  decredIcons["receive"],
-		},
-	})
-	win.navTabs = navTabs
-
 	win.pages = map[string]Page{
 		pages.SeedPageID:    pages.NewSeedPage(win.theme),
 		pages.AddressPageID: pages.NewAddressPage(win.theme),
 	}
+
+	win.navTabs = win.theme.NewTabs()
+	win.navTabs.AddItems([]theme.Tab{
+		{
+			ID:      pages.SeedPageID,
+			Title:   "Generate Seed",
+			Content: win.pages[pages.SeedPageID].Render,
+		},
+		{
+			ID:      pages.AddressPageID,
+			Title:   "Generate Address",
+			Content: win.pages[pages.AddressPageID].Render,
+		},
+	})
 }
 
 func (win *Window) Loop() {
-	gtx := layout.NewContext(win.window.Queue())
-
+	var ops op.Ops
 	for {
-		e := <-win.window.Events()
-		switch e := e.(type) {
-		case system.DestroyEvent:
-			return
-		case system.FrameEvent:
-			gtx.Reset(e.Config, e.Size)
-			win.drawWindow(gtx)
-			e.Frame(gtx.Ops)
+		select {
+		case e := <-win.window.Events():
+			switch e := e.(type) {
+			case system.DestroyEvent:
+				return
+			case system.FrameEvent:
+				gtx := layout.NewContext(&ops, e)
+				win.drawWindow(gtx)
+				e.Frame(gtx.Ops)
+			}
 		}
 	}
 }
 
-func (win *Window) drawWindow(gtx *layout.Context) {
+func (win *Window) drawWindow(gtx layout.Context) {
 	theme.ToMax(gtx)
 	theme.Fill(gtx, win.theme.Color.Background)
 
-	navs := []string{pages.SeedPageID, pages.AddressPageID}
-
-	win.navTabs.Separator = true
 	if win.navTabs.Changed() {
-		win.currentPage = navs[win.navTabs.Selected]
+		win.currentPage = win.navTabs.SelectedID()
 		win.isRenderingPage = false
 	}
 
@@ -98,11 +100,7 @@ func (win *Window) drawWindow(gtx *layout.Context) {
 			page.BeforeRender()
 		}
 
-		win.navTabs.Layout(gtx, func() {
-			layout.UniformInset(unit.Dp(0)).Layout(gtx, func() {
-				page.Render(gtx)
-				win.isRenderingPage = true
-			})
-		})
+		win.isRenderingPage = true
+		win.navTabs.Layout(gtx)
 	}
 }

@@ -2,6 +2,7 @@ package pages
 
 import (
 	"errors"
+	"image"
 	"strconv"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"gioui.org/op/paint"
 	"gioui.org/unit"
 	"gioui.org/widget"
+	"gioui.org/widget/material"
 
 	"github.com/raedahgroup/dcrseedgen/helper"
 	"github.com/raedahgroup/dcrseedgen/ui/theme"
@@ -31,23 +33,24 @@ type AddressPage struct {
 	numOfItemsEditorMaterial theme.Editor
 	numOfItemsEditorWidget   *widget.Editor
 	generateButtonMaterial   theme.Button
-	generateButtonWidget     *widget.Button
-	addressesLabel           theme.Label
-	privateKeysLabel         theme.Label
-	exportingDataLabel       theme.Label
+	generateButtonWidget     *widget.Clickable
+	addressesLabel           material.LabelStyle
+	privateKeysLabel         material.LabelStyle
+	exportingDataLabel       material.LabelStyle
 
 	networkGroup         *widget.Enum
 	networkRadioMaterial []theme.RadioButton
 
 	exportIcon       theme.IconButton
-	exportIconWidget *widget.Button
+	exportIconWidget *widget.Clickable
 
 	message helper.Message
 
 	isExportingData bool
 
-	list *layout.List
-	err  error
+	list        *layout.List
+	addressList *layout.List
+	err         error
 }
 
 func NewAddressPage(th *theme.Theme) *AddressPage {
@@ -59,33 +62,38 @@ func NewAddressPage(th *theme.Theme) *AddressPage {
 		Axis: layout.Vertical,
 	}
 
+	page.addressList = &layout.List{
+		Axis: layout.Vertical,
+	}
+
 	networks := []string{"Testnet3", "Mainnet", "Regnet"}
 
 	page.networkGroup = new(widget.Enum)
-	page.networkGroup.SetValue(networks[0])
+	page.networkGroup.Value = networks[0]
 	page.networkRadioMaterial = make([]theme.RadioButton, len(networks))
 	for i := range networks {
-		page.networkRadioMaterial[i] = th.RadioButton(networks[i], networks[i])
+		page.networkRadioMaterial[i] = th.RadioButton(networks[i], networks[i], page.networkGroup)
 		page.networkRadioMaterial[i].Size = unit.Dp(20)
 	}
 
-	page.numOfItemsEditorMaterial = th.Editor("How many?")
 	page.numOfItemsEditorWidget = &widget.Editor{
 		SingleLine: true,
 		Submit:     true,
 	}
+	page.numOfItemsEditorMaterial = th.Editor("How many?", page.numOfItemsEditorWidget)
 	page.numOfItemsEditorWidget.SetText("1")
 
-	page.generateButtonMaterial = th.Button("Generate")
-	page.generateButtonWidget = new(widget.Button)
+	page.generateButtonWidget = new(widget.Clickable)
+	page.generateButtonMaterial = th.Button("Generate", page.generateButtonWidget)
 
 	page.addressesLabel = th.Body1("Addresses")
 	page.privateKeysLabel = th.Body1("Private Keys")
 
-	page.exportIcon = th.IconButton(theme.MustIcon(theme.NewIcon(icons.CommunicationImportExport)))
+	page.exportIconWidget = new(widget.Clickable)
+	page.exportIcon = th.IconButton(theme.MustIcon(theme.NewIcon(icons.CommunicationImportExport)), page.exportIconWidget)
 	page.exportIcon.Size = unit.Dp(30)
 	page.exportIcon.Padding = unit.Dp(5)
-	page.exportIconWidget = new(widget.Button)
+	page.exportIcon.Color = th.Color.Surface
 
 	page.isExportingData = false
 	page.exportingDataLabel = th.Caption("Exporting data...")
@@ -107,13 +115,13 @@ func (page *AddressPage) resetMessage() {
 	page.message.Variant = ""
 }
 
-func (page *AddressPage) handleEvents(gtx *layout.Context) {
-	for page.generateButtonWidget.Clicked(gtx) {
+func (page *AddressPage) handleEvents() {
+	for page.generateButtonWidget.Clicked() {
 		page.resetMessage()
-		page.generatePairs(page.networkGroup.Value(gtx))
+		page.generatePairs(page.networkGroup.Value)
 	}
 
-	for page.exportIconWidget.Clicked(gtx) {
+	for page.exportIconWidget.Clicked() {
 		page.resetMessage()
 		page.exportCSV()
 	}
@@ -155,9 +163,11 @@ func (page *AddressPage) generatePairs(network string) {
 
 	numberOfItemsToGenerate, err := strconv.Atoi(numberOfItemsToGenerateStr)
 	if err != nil {
-		page.err = errors.New("Invalid number")
+		page.err = errors.New("Please specify a valid number to generate")
 		return
 	}
+
+	page.err = nil
 
 	page.generatedAddresses = make([]string, numberOfItemsToGenerate)
 	page.generatedPrivateKeys = make([]string, numberOfItemsToGenerate)
@@ -174,177 +184,197 @@ func (page *AddressPage) generatePairs(network string) {
 	}
 }
 
-func (page *AddressPage) Render(gtx *layout.Context) {
-	page.handleEvents(gtx)
+func (page *AddressPage) Render(gtx layout.Context) layout.Dimensions {
+	page.handleEvents()
+	maxHeight := gtx.Constraints.Max.Y
 
-	layout.UniformInset(unit.Dp(10)).Layout(gtx, func() {
-		layout.Flex{Axis: layout.Vertical}.Layout(gtx,
-			layout.Rigid(func() {
-				layout.Inset{Bottom: unit.Dp(15)}.Layout(gtx, func() {
-					page.renderFormSection(gtx)
-				})
-			}),
-			layout.Rigid(func() {
-				if page.message.Message != "" {
-					if page.message.Variant == "error" {
-						page.theme.ErrorAlert(gtx, page.message.Message)
-					} else {
-						page.theme.SuccessAlert(gtx, page.message.Message)
-					}
-				}
-			}),
-			layout.Rigid(func() {
-				if len(page.generatedAddresses) > 0 {
-					layout.Flex{Axis: layout.Vertical}.Layout(gtx,
-						layout.Rigid(func() {
-							layout.Inset{Bottom: unit.Dp(10)}.Layout(gtx, func() {
-								page.renderHeader(gtx)
-							})
-						}),
-						layout.Flexed(0.85, func() {
-							page.list.Layout(gtx, len(page.generatedAddresses), func(i int) {
-								page.renderRow(gtx, i)
-							})
-						}),
-					)
-				}
-			}),
-			layout.Rigid(func() {
-				if len(page.generatedAddresses) > 0 {
-					layout.Flex{Axis: layout.Vertical, Alignment: layout.Start}.Layout(gtx,
-						layout.Rigid(func() {
-							page.exportIcon.Layout(gtx, page.exportIconWidget)
-						}),
-						layout.Rigid(func() {
-							layout.Inset{Top: unit.Dp(3)}.Layout(gtx, func() {
-								layout.Center.Layout(gtx, func() {
-									page.theme.Caption("Export").Layout(gtx)
-								})
-							})
-						}),
-					)
-				}
+	w := []layout.Widget{
+		func(gtx layout.Context) layout.Dimensions {
+			return page.renderFormSection(gtx)
+		},
+		func(gtx layout.Context) layout.Dimensions {
+			if page.err != nil {
+				gtx.Constraints.Min.X = gtx.Constraints.Max.X
+				return page.theme.ErrorAlert(gtx, page.err.Error())
+			}
 
-			}),
-		)
-	})
+			return layout.Dimensions{}
+		},
+		func(gtx layout.Context) layout.Dimensions {
+			if page.message.Message != "" {
+				if page.message.Variant == "error" {
+					return page.theme.ErrorAlert(gtx, page.message.Message)
+				}
+				return page.theme.SuccessAlert(gtx, page.message.Message)
+			}
+			return layout.Dimensions{}
+		},
+		func(gtx layout.Context) layout.Dimensions {
+
+			if len(page.generatedAddresses) > 0 {
+				return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						return layout.Inset{Bottom: unit.Dp(10)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+							return page.renderHeader(gtx)
+						})
+					}),
+					layout.Flexed(0.8, func(gtx layout.Context) layout.Dimensions {
+						gtx.Constraints.Max.Y = int(float32(0.67) * float32(maxHeight))
+						return page.addressList.Layout(gtx, len(page.generatedAddresses), func(gtx layout.Context, i int) layout.Dimensions {
+							return page.renderRow(gtx, i)
+						})
+					}),
+				)
+			}
+			return layout.Dimensions{}
+		},
+		func(gtx layout.Context) layout.Dimensions {
+			if len(page.generatedAddresses) > 0 {
+				return layout.Flex{Axis: layout.Vertical, Alignment: layout.Start}.Layout(gtx,
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						return page.exportIcon.Layout(gtx)
+					}),
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						return layout.Inset{Top: unit.Dp(3)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+							return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+								return page.theme.Caption("Export").Layout(gtx)
+							})
+						})
+					}),
+				)
+			}
+			return layout.Dimensions{}
+		},
+	}
 
 	if page.isExportingData {
 		page.renderExportingModal(gtx)
 	}
+
+	return page.list.Layout(gtx, len(w), func(gtx layout.Context, i int) layout.Dimensions {
+		return layout.UniformInset(unit.Dp(10)).Layout(gtx, w[i])
+	})
 }
 
-func (page *AddressPage) renderHeader(gtx *layout.Context) {
+func (page *AddressPage) renderHeader(gtx layout.Context) layout.Dimensions {
 	txt := page.theme.Label(unit.Dp(16), "#")
 	txt.Color = page.theme.Color.Hint
 
-	layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
-		layout.Flexed(numRowWidth, func() {
-			txt.Layout(gtx)
+	return layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
+		layout.Flexed(numRowWidth, func(gtx layout.Context) layout.Dimensions {
+			return txt.Layout(gtx)
 		}),
-		layout.Flexed(addressRowWidth, func() {
+		layout.Flexed(addressRowWidth, func(gtx layout.Context) layout.Dimensions {
 			txt.Text = "Address"
-			txt.Layout(gtx)
+			return txt.Layout(gtx)
 		}),
-		layout.Flexed(privateKeyRowWidth, func() {
+		layout.Flexed(privateKeyRowWidth, func(gtx layout.Context) layout.Dimensions {
 			txt.Text = "Private Key"
-			txt.Layout(gtx)
+			return txt.Layout(gtx)
 		}),
 	)
 }
 
-func (page *AddressPage) renderRow(gtx *layout.Context, index int) {
-	layout.Inset{Bottom: unit.Dp(15)}.Layout(gtx, func() {
-		layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
-			layout.Flexed(numRowWidth, func() {
-				page.theme.Caption(strconv.Itoa(index + 1)).Layout(gtx)
+func (page *AddressPage) renderRow(gtx layout.Context, index int) layout.Dimensions {
+	return layout.Inset{Bottom: unit.Dp(15)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		return layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
+			layout.Flexed(numRowWidth, func(gtx layout.Context) layout.Dimensions {
+				return page.theme.Caption(strconv.Itoa(index + 1)).Layout(gtx)
 			}),
-			layout.Flexed(addressRowWidth, func() {
-				page.theme.Caption(page.generatedAddresses[index]).Layout(gtx)
+			layout.Flexed(addressRowWidth, func(gtx layout.Context) layout.Dimensions {
+				return page.theme.Caption(page.generatedAddresses[index]).Layout(gtx)
 			}),
-			layout.Flexed(privateKeyRowWidth, func() {
-				page.theme.Caption(page.generatedPrivateKeys[index]).Layout(gtx)
+			layout.Flexed(privateKeyRowWidth, func(gtx layout.Context) layout.Dimensions {
+				return page.theme.Caption(page.generatedPrivateKeys[index]).Layout(gtx)
 			}),
 		)
 	})
 }
 
-func (page *AddressPage) renderGeneratedPairs(gtx *layout.Context) {
+func (page *AddressPage) renderGeneratedPairs(gtx layout.Context) layout.Dimensions {
 	list := layout.List{Axis: layout.Vertical}
-	list.Layout(gtx, len(page.generatedAddresses), func(i int) {
-		layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
-			layout.Rigid(func() {
-				page.theme.Body2(page.generatedAddresses[i]).Layout(gtx)
+	return list.Layout(gtx, len(page.generatedAddresses), func(gtx layout.Context, i int) layout.Dimensions {
+		return layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				return page.theme.Body2(page.generatedAddresses[i]).Layout(gtx)
 			}),
-			layout.Rigid(func() {
-				page.theme.Body2(page.generatedPrivateKeys[i]).Layout(gtx)
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				return page.theme.Body2(page.generatedPrivateKeys[i]).Layout(gtx)
 			}),
 		)
 	})
 }
 
-func (page *AddressPage) renderFormSection(gtx *layout.Context) {
-	layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
-		layout.Rigid(func() {
-			(&layout.List{Axis: layout.Horizontal}).
-				Layout(gtx, len(page.networkRadioMaterial), func(index int) {
-					layout.Inset{Right: unit.Dp(5), Top: unit.Dp(15)}.Layout(gtx, func() {
-						page.networkRadioMaterial[index].Layout(gtx, page.networkGroup)
-					})
+func (page *AddressPage) renderFormSection(gtx layout.Context) layout.Dimensions {
+	return layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			list := layout.List{Axis: layout.Horizontal}
+			return list.Layout(gtx, len(page.networkRadioMaterial), func(gtx layout.Context, index int) layout.Dimensions {
+				return layout.Inset{Right: unit.Dp(5), Top: unit.Dp(15)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					return page.networkRadioMaterial[index].Layout(gtx)
 				})
+			})
 		}),
-		layout.Rigid(func() {
-			page.drawDivider(gtx)
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return page.drawDivider(gtx)
 		}),
-		layout.Rigid(func() {
-			gtx.Constraints.Width.Max = 100
-			page.numOfItemsEditorMaterial.Layout(gtx, page.numOfItemsEditorWidget)
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			gtx.Constraints.Max.X = 100
+			return layout.Inset{Right: unit.Dp(10)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				return page.numOfItemsEditorMaterial.Layout(gtx)
+			})
 		}),
-		layout.Rigid(func() {
-			page.drawDivider(gtx)
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return page.drawDivider(gtx)
 		}),
-		layout.Rigid(func() {
-			page.generateButtonMaterial.Layout(gtx, page.generateButtonWidget)
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return page.generateButtonMaterial.Layout(gtx)
 		}),
 	)
 }
 
-func (page *AddressPage) drawDivider(gtx *layout.Context) {
-	layout.Inset{
+func (page *AddressPage) drawDivider(gtx layout.Context) layout.Dimensions {
+	x, y := 1, 45
+
+	return layout.Inset{
 		Left:  unit.Dp(25),
 		Right: unit.Dp(25),
-		Top:   unit.Dp(0)}.Layout(gtx, func() {
-		rect := f32.Rectangle{Max: f32.Point{X: 1, Y: 45}}
+		Top:   unit.Dp(0),
+	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		rect := f32.Rectangle{Max: f32.Point{X: float32(x), Y: float32(y)}}
 		op.TransformOp{}.Offset(f32.Point{X: 0, Y: 0}).Add(gtx.Ops)
 		paint.ColorOp{Color: page.theme.Color.Hint}.Add(gtx.Ops)
 		paint.PaintOp{Rect: rect}.Add(gtx.Ops)
+
+		return layout.Dimensions{
+			Size: image.Point{X: x, Y: y},
+		}
 	})
 }
 
-func (page *AddressPage) renderExportingModal(gtx *layout.Context) {
+func (page *AddressPage) renderExportingModal(gtx layout.Context) layout.Dimensions {
 	overlayColor := page.theme.Color.Black
 	overlayColor.A = 200
 
-	layout.Stack{}.Layout(gtx,
-		layout.Expanded(func() {
-			theme.FillMax(gtx, overlayColor)
+	return layout.Stack{}.Layout(gtx,
+		layout.Expanded(func(gtx layout.Context) layout.Dimensions {
+			return theme.FillMax(gtx, overlayColor)
 		}),
-		layout.Stacked(func() {
-			hv := float32((gtx.Constraints.Height.Max / 2) - 30)
+		layout.Stacked(func(gtx layout.Context) layout.Dimensions {
+			hv := float32((gtx.Constraints.Max.Y / 2) - 30)
 
-			layout.Inset{
+			return layout.Inset{
 				Top:    unit.Dp(hv),
 				Bottom: unit.Dp(hv),
 				Left:   unit.Dp(80),
 				Right:  unit.Dp(80),
-			}.Layout(gtx, func() {
+			}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				theme.FillMax(gtx, page.theme.Color.Surface)
 
-				gtx.Constraints.Width.Min = gtx.Constraints.Width.Max
-				gtx.Constraints.Height.Min = gtx.Constraints.Height.Max
+				gtx.Constraints.Min = gtx.Constraints.Max
 
-				layout.Center.Layout(gtx, func() {
-					page.exportingDataLabel.Layout(gtx)
+				return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					return page.exportingDataLabel.Layout(gtx)
 				})
 			})
 		}),

@@ -26,8 +26,7 @@ type checkable struct {
 	uncheckedStateIcon *Icon
 }
 
-func (c *checkable) layout(gtx *layout.Context, checked bool) {
-
+func (c *checkable) layout(gtx layout.Context, checked bool) layout.Dimensions {
 	var icon *Icon
 	if checked {
 		icon = c.checkedStateIcon
@@ -35,32 +34,31 @@ func (c *checkable) layout(gtx *layout.Context, checked bool) {
 		icon = c.uncheckedStateIcon
 	}
 
-	hmin := gtx.Constraints.Width.Min
-	vmin := gtx.Constraints.Height.Min
-	layout.Flex{Alignment: layout.Middle}.Layout(gtx,
-		layout.Rigid(func() {
-			layout.Center.Layout(gtx, func() {
-				layout.UniformInset(unit.Dp(2)).Layout(gtx, func() {
+	min := gtx.Constraints.Min
+	dims := layout.Flex{Alignment: layout.Middle}.Layout(gtx,
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				return layout.UniformInset(unit.Dp(2)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 					size := gtx.Px(c.Size)
 					icon.Color = c.IconColor
 					icon.Layout(gtx, unit.Px(float32(size)))
-					gtx.Dimensions = layout.Dimensions{
+					return layout.Dimensions{
 						Size: image.Point{X: size, Y: size},
 					}
 				})
 			})
 		}),
 
-		layout.Rigid(func() {
-			gtx.Constraints.Width.Min = hmin
-			gtx.Constraints.Height.Min = vmin
-			layout.W.Layout(gtx, func() {
-				layout.UniformInset(unit.Dp(2)).Layout(gtx, func() {
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			gtx.Constraints.Min = min
+			return layout.W.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				return layout.UniformInset(unit.Dp(2)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 					paint.ColorOp{Color: c.Color}.Add(gtx.Ops)
-					widget.Label{}.Layout(gtx, c.shaper, c.Font, c.TextSize, c.Label)
+					return widget.Label{}.Layout(gtx, c.shaper, c.Font, c.TextSize, c.Label)
 				})
 			})
 		}),
 	)
-	pointer.Rect(image.Rectangle{Max: gtx.Dimensions.Size}).Add(gtx.Ops)
+	pointer.Rect(image.Rectangle{Max: dims.Size}).Add(gtx.Ops)
+	return dims
 }

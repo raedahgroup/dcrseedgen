@@ -4,35 +4,23 @@ package theme
 
 import (
 	"gioui.org/layout"
-	"gioui.org/unit"
+	//"gioui.org/unit"
 	"gioui.org/widget"
+	"gioui.org/widget/material"
 )
 
 type RadioButton struct {
-	checkable
-	Key string
+	material.RadioButtonStyle
 }
 
 // RadioButton returns a RadioButton with a label. The key specifies
 // the value for the Enum.
-func (t *Theme) RadioButton(key, label string) RadioButton {
+func (t *Theme) RadioButton(key, label string, enum *widget.Enum) RadioButton {
 	return RadioButton{
-		checkable: checkable{
-			Label: label,
-
-			Color:              t.Color.Text,
-			IconColor:          t.Color.Primary,
-			TextSize:           t.TextSize.Scale(14.0 / 16.0),
-			Size:               unit.Dp(26),
-			shaper:             t.Shaper,
-			checkedStateIcon:   t.radioCheckedIcon,
-			uncheckedStateIcon: t.radioUncheckedIcon,
-		},
-		Key: key,
+		material.RadioButton(t.Theme, enum, key, label),
 	}
 }
 
-func (r RadioButton) Layout(gtx *layout.Context, enum *widget.Enum) {
-	r.layout(gtx, enum.Value(gtx) == r.Key)
-	enum.Layout(gtx, r.Key)
+func (r RadioButton) Layout(gtx layout.Context) layout.Dimensions {
+	return r.RadioButtonStyle.Layout(gtx)
 }
