@@ -3,20 +3,13 @@ package theme
 import (
 	"image"
 	"image/color"
-	//"log"
-	//"math"
 
-	//"gioui.org/app"
 	"gioui.org/f32"
-	//"gioui.org/io/system"
 	"gioui.org/layout"
-	//"gioui.org/op"
 	"gioui.org/op/paint"
-	//"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
-	//"gioui.org/font/gofont"
 )
 
 type Tab struct {
