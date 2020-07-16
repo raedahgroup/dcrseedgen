@@ -125,15 +125,15 @@ func (page *AddressPage) handleEvents() {
 		page.resetMessage()
 		page.exportCSV()
 	}
+
+	if page.message.Message != "" && page.message.Variant == "success" {
+		time.AfterFunc(time.Second*5, func() {
+			page.message.Message = ""
+		})
+	}
 }
 
 func (page *AddressPage) exportCSV() {
-	now := time.Now()
-	filename, err := time.Parse(time.RFC3339, now.Format(time.RFC3339))
-	if err != nil {
-		panic(err)
-	}
-
 	page.isExportingData = true
 
 	// prepare data
@@ -143,12 +143,12 @@ func (page *AddressPage) exportCSV() {
 	}
 
 	// show exporting message
-	exportPath, err := helper.CreateCSV(filename.String(), data)
+	exportPath, err := helper.CreateCSV(data)
 	if err != nil {
 		page.message.Message = "error exporting data: " + err.Error()
 		page.message.Variant = "error"
 	} else {
-		page.message.Message = "Successfully exported csv to " + exportPath
+		page.message.Message = "Exported data to " + exportPath
 		page.message.Variant = "success"
 	}
 	page.isExportingData = false

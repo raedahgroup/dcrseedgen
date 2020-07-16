@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type Message struct {
@@ -11,15 +12,26 @@ type Message struct {
 	Variant string
 }
 
-var exportDir string
+const (
+	exportDir            = "./exports"
+	exportFilenamePrefix = "dcrseedgen_"
+)
 
 func CreateDataDirectory() error {
-	exportDir = filepath.Join(".", "exports")
-	return os.MkdirAll(exportDir, os.ModePerm)
+	_, err := os.Stat(exportDir)
+	if err == nil {
+		return nil
+	}
+
+	if os.IsNotExist(err) {
+		os.Mkdir(exportDir, os.ModePerm)
+		return nil
+	}
+	return err
 }
 
-func CreateCSV(filename string, data [][]string) (string, error) {
-	filename = filepath.Join(exportDir, filename)
+func CreateCSV(data [][]string) (string, error) {
+	filename := filepath.Join(exportDir, exportFilenamePrefix+time.Now().Format("2006-01-02_15:04:05")+".csv")
 	file, err := os.Create(filename)
 	if err != nil {
 		return "", err
@@ -36,5 +48,5 @@ func CreateCSV(filename string, data [][]string) (string, error) {
 		}
 	}
 	fp, _ := filepath.Abs(filename)
-	return fp + ".csv", nil
+	return fp, nil
 }
