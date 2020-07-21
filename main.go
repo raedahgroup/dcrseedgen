@@ -1,94 +1,87 @@
 package main
 
 import (
+	"image"
 	"log"
+	"os"
+	"strings"
 
-	"github.com/aarzilli/nucular"
+	app "gioui.org/app"
+	"gioui.org/font/opentype"
+	"gioui.org/text"
+
+	"github.com/markbates/pkger"
 	"github.com/raedahgroup/dcrseedgen/helper"
-)
-
-type App struct {
-	currentPage  string
-	pageChanged  bool
-	masterWindow nucular.MasterWindow
-	pages        map[string]page
-}
-
-const (
-	appName  = "DCR Seed Generator"
-	homePage = "seed"
-
-	navPaneWidth            = 220
-	contentPaneXOffset      = 25
-	contentPaneWidthPadding = 55
+	"github.com/raedahgroup/dcrseedgen/ui"
 )
 
 func main() {
-	app := &App{
-		pageChanged: true,
-		currentPage: homePage,
-	}
-
-	// register pages
-	pages := getPages()
-	app.pages = make(map[string]page, len(pages))
-	for _, page := range pages {
-		app.pages[page.name] = page
-	}
-
-	// load logo once
-	err := helper.LoadLogo()
+	// make data directory if not exists
+	err := helper.CreateDataDirectory()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("error creating data directory: %s", err.Error())
 	}
 
-	// load icons
-	err = helper.LoadIcons()
+	// load font
+	col, err := loadFont()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("error loading font: %s", err.Error())
 	}
 
-	window := nucular.NewMasterWindow(nucular.WindowNoScrollbar|nucular.WindowContextualReplace, appName, app.render)
-	if err := helper.InitStyle(window); err != nil {
-		log.Fatal(err)
+	// load decred icons
+	decredIcons, err := loadDecredIcons()
+	if err != nil {
+		log.Fatalf("error loading decred icons: %s", err.Error())
 	}
 
-	app.masterWindow = window
-	window.Main()
+	win := ui.NewWindow(decredIcons, col)
+	go win.Loop()
+
+	app.Main()
 }
 
-func (app *App) changePage(page string) {
-	app.currentPage = page
-	app.pageChanged = true
-	app.masterWindow.Changed()
-}
-
-func (app *App) render(window *nucular.Window) {
-	currentPage := app.pages[app.currentPage]
-
-	if app.pageChanged {
-		currentPage.handler.BeforeRender()
-		app.pageChanged = false
+func loadFont() (*text.Collection, error) {
+	sans, err := pkger.Open("/assets/fonts/source_sans_pro_regular.otf")
+	if err != nil {
+		return nil, err
 	}
 
-	helper.DrawPageHeader(window)
-	app.renderNavButtons(window)
-	currentPage.handler.Render(window)
+	stat, err := sans.Stat()
+	if err != nil {
+		return nil, err
+	}
+	bytes := make([]byte, stat.Size())
+	sans.Read(bytes)
+	fnt, err := opentype.Parse(bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	col := new(text.Collection)
+	col.Register(text.Font{}, fnt)
+
+	return col, nil
 }
 
-func (app *App) renderNavButtons(window *nucular.Window) {
-	window.Row(helper.ButtonHeight + 10).Dynamic(1)
-	if group := window.GroupBegin("nav-window", 0); group != nil {
-		group.Row(helper.ButtonHeight).Ratio(0.18, 0.23)
-		helper.StyleNavButton(window)
-		if group.ButtonText("Generate Seed") && app.currentPage != "seed" {
-			app.changePage("seed")
+func loadDecredIcons() (map[string]image.Image, error) {
+	decredIcons := make(map[string]image.Image)
+	err := pkger.Walk("/assets/decredicons", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			panic(err)
+		}
+		if info.IsDir() || !strings.HasSuffix(path, ".png") {
+			return nil
 		}
 
-		if group.ButtonText("Generate Address") && app.currentPage != "address" {
-			app.changePage("address")
+		f, _ := pkger.Open(path)
+		img, _, err := image.Decode(f)
+		if err != nil {
+			return err
 		}
-		helper.ResetButtonStyle(window)
-		group.GroupEnd()
-	}
+		split := strings.Split(info.Name(), ".")
+		decredIcons[split[0]] = img
+		return nil
+	})
+
+	return decredIcons, err
 }
